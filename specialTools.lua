@@ -239,8 +239,9 @@ function courseplay:setNameVariable(workTool)
 		workTool.cp.isCaseIHA8800MR = true;
 		workTool.cp.fixedCombineOffset = 5.3
 		workTool.cp.fixedChopperOffset = 5.3
-		workTool.cp.turnDiameterAutoMode = false
-		workTool.cp.turnDiameter = 17
+		workTool.cp.directionNodeZOffset = -3
+		--workTool.cp.turnDiameterAutoMode = false
+		--workTool.cp.turnDiameter = 17
 		
 	-- Harvesters (attachable) [Giants]
 	elseif workTool.cp.xmlFileName == 'grimmeRootster604.xml' then
@@ -393,6 +394,11 @@ function courseplay:setNameVariable(workTool)
 	elseif 	workTool.cp.xmlFileName == 'bigPack1290HDPII.xml' then
 		workTool.cp.isKroneBigPack1290HDPII = true;
 		workTool.cp.isStrawHarvestAddonBaler = true;	
+
+	--Mchale 998 (Bale Wrapper) [MOD]
+	elseif workTool.cp.xmlFileName == 'mchale998.xml' then
+		workTool.cp.isMchale998 = true;
+		workTool.cp.notToBeReversed = true;	
 		
 	-- ###########################################################
 	-- [6] OTHER TOOLS
@@ -658,8 +664,8 @@ function courseplay:handleSpecialTools(self,workTool,unfold,lower,turnOn,allowed
 		return false ,allowedToDrive,forceSpeedLimit;
 	end;
 
-	--Ursus Z586 BaleWrapper or Kuhn SW4014 BaleWrapper
-	if workTool.cp.isUrsusZ586 or workTool.cp.isKuhnSW4014 then
+	--Ursus Z586 BaleWrapper or Kuhn SW4014 BaleWrapper or Mchale998 BaleWrapper
+	if workTool.cp.isUrsusZ586 or workTool.cp.isKuhnSW4014 or workTool.cp.isMchale998 then
 		if workTool.baleWrapperState == 4 then
 			workTool:doStateChange(5)
 		end
@@ -888,6 +894,8 @@ function courseplay:askForSpecialSettings(self, object)
 		self.cp.noStopOnEdge = true;
 		self.cp.backMarkerOffset = 4.5;
 		self.isStrawEnabled = false;
+	elseif self.cp.isCaseIHA8800MR then
+		self.cp.changeDirAngle = 5;
 	end;
 
 	-- OBJECTS
@@ -957,6 +965,11 @@ function courseplay:askForSpecialSettings(self, object)
 		automaticToolOffsetX = -2.5;
 
 	elseif object.cp.isKuhnSW4014 then
+		self.cp.noStopOnEdge = true
+		self.cp.noStopOnTurn = true
+		automaticToolOffsetX = -2.5;
+
+	elseif object.cp.isMchale998 then
 		self.cp.noStopOnEdge = true
 		self.cp.noStopOnTurn = true
 		automaticToolOffsetX = -2.5;

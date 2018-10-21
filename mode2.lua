@@ -601,7 +601,10 @@ function courseplay:unload_combine(vehicle, dt)
 			vehicle.cp.chopperIsTurning = false
 		end
 
-		if dod > 50 then
+		if dod < 100 and combineIsTurning then
+			-- Do nothing
+			courseplay:setInfoText(vehicle, "COURSEPLAY_WAITING_FOR_COMBINE_TURNED");
+		elseif dod > 50 then
 			courseplay:setModeState(vehicle, STATE_DRIVE_TO_COMBINE);
 		end
 		-- END STATE 4
@@ -1126,12 +1129,15 @@ function courseplay:unload_combine(vehicle, dt)
 					if combine then
 						local distanceToCombine = courseplay:distanceToObject( vehicle, combine )
 						-- magic constants, distance based on turn diameter
-						if distanceToCombine < vehicle.cp.turnDiameter + courseplay:getSafetyDistanceFromCombine( combine ) then
-						  courseplay.debugVehicle( 9, vehicle, "Only %.2f meters from the combine on the way, abort course and following the combine", distanceToCombine )
-						  continueCourse = false
-						  vehicle.cp.nextTargets = {}
-						  courseplay:switchToNextMode2State(vehicle);
-						  courseplay:setMode2NextState(vehicle, STATE_DEFAULT);
+						if distanceToCombine < 100 and combineIsTurning then
+							allowedToDrive  = false
+							courseplay:setInfoText(vehicle, "COURSEPLAY_WAITING_FOR_COMBINE_TURNED");
+						elseif distanceToCombine < vehicle.cp.turnDiameter + courseplay:getSafetyDistanceFromCombine( combine ) then
+						  	courseplay.debugVehicle( 9, vehicle, "Only %.2f meters from the combine on the way, abort course and following the combine", distanceToCombine )
+						  	continueCourse = false
+						  	vehicle.cp.nextTargets = {}
+							courseplay:switchToNextMode2State(vehicle);
+							courseplay:setMode2NextState(vehicle, STATE_DEFAULT);
 						else
 						  courseplay.debugVehicle( 9, vehicle, "Combine is still %.2f meters from me, continuing course", distanceToCombine )
 						end 
@@ -1172,11 +1178,12 @@ function courseplay:unload_combine(vehicle, dt)
        			--[[ we are following waypoints mode (for instance because we were in STATE_DRIVE_TO_COMBINE but 
 					due the the realistic driving settings, we switched to STATE_FOLLOW_TARGET_WPS).
 					now, we are attempting to switch back to drive to combine mode]]
-				if vehicle.cp.mode2nextState == STATE_WAIT_FOR_PIPE or vehicle.cp.mode2nextState == STATE_DRIVE_TO_PIPE then
-					courseplay:switchToNextMode2State(vehicle);
 
-				elseif vehicle.cp.mode2nextState == STATE_DRIVE_TO_REAR and combineIsTurning then
+				if (vehicle.cp.mode2nextState == STATE_DRIVE_TO_REAR or vehicle.cp.mode2nextState == STATE_WAIT_FOR_PIPE or vehicle.cp.mode2nextState == STATE_DRIVE_TO_PIPE) and combineIsTurning then
 					courseplay:setInfoText(vehicle, "COURSEPLAY_WAITING_FOR_COMBINE_TURNED");
+
+				elseif vehicle.cp.mode2nextState == STATE_WAIT_FOR_PIPE or vehicle.cp.mode2nextState == STATE_DRIVE_TO_PIPE then
+					courseplay:switchToNextMode2State(vehicle);
 
 				elseif vehicle.cp.mode2nextState == STATE_ALL_TRAILERS_FULL then -- tipper turning from combine
 					courseplay:debug(string.format("%s (%s): trailer(s) full, last field waypoint reached, heading for the first course waypoint.", nameNum(vehicle), tostring(vehicle.id)), 4);
