@@ -737,7 +737,7 @@ function courseplay:turn(vehicle, dt)
 	end
 
 	-- MR needs braking assitance
-	if vehicle.mrIsMrVehicle then
+	if vehicle.cp.useProgessiveBraking then
 		courseplay:mrProgressiveBreaking(vehicle, refSpeed)
 		if vehicle.cp.mrAccelrator then
 			directionForce = -vehicle.cp.mrAccelrator -- The progressive breaking function returns a postive number which accelerates the tractor 

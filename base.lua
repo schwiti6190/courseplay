@@ -48,7 +48,8 @@ function courseplay:load(savegame)
 	-- GIANT DLC
 	self.cp.haveInversedRidgeMarkerState = nil; --bool
 
-	-- --More Realistlitic Mod. Temp fix until we can fix the breaking problem. 
+	-- --More Realistlitic Mod and Mass Type adjustment
+	self.cp.useProgessiveBraking = g_modIsLoaded["FS17_fillTypeMassAdjustment_realistic"] or g_modIsLoaded["FS17_moreRealisticGameplay"]
 	self.cp.changedMRMod = false;
 
 	-- Mode4/6 Pathfinding TODO Move this to its proper place

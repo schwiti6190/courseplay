@@ -741,7 +741,7 @@ function courseplay:stop(self)
 		self.cp.changedMRMod = false;
 	end; ]]
 
-	if self.mrIsMrVehicle then
+	if self.cp.useProgessiveBraking then
 		self.cp.mrAccelrator = nil
 	end
 

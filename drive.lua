@@ -1066,7 +1066,7 @@ function courseplay:drive(self, dt)
 			if self.cp.speedBrake then
 				-- We only need to brake slightly.
 				local mrAccelrator = .25
-				if self.mrIsMrVehicle then
+				if self.cp.useProgessiveBraking then
 					mrAccelrator = self.cp.mrAccelrator -- We need to actually break the tractor even more when using MR due to no engine break
 				end
 				acceleration = (self.movingDirection == 1) == fwd and -mrAccelrator or mrAccelrator; -- Setting accelrator to a negative value will break the tractor.
@@ -1273,7 +1273,7 @@ function courseplay:setSpeed(vehicle, refSpeed,forceTrueSpeed)
 	vehicle:setCruiseControlMaxSpeed(newSpeed)
 
 	courseplay:handleSlipping(vehicle, refSpeed);
-	if vehicle.mrIsMrVehicle then
+	if vehicle.cp.useProgessiveBraking then
 		courseplay:mrProgressiveBreaking(vehicle, refSpeed)
 		if vehicle.cp.mrAccelrator then
 			vehicle.cp.speedBrake = true;
@@ -2119,7 +2119,7 @@ function courseplay:navigatePathToUnloadCourse(vehicle, dt, allowedToDrive)
 		
 		-- MR needs braking assitance
 		local accelrator = 1
-		if vehicle.mrIsMrVehicle then
+		if vehicle.cp.useProgessiveBraking then
 			courseplay:mrProgressiveBreaking(vehicle, refSpeed)
 			if vehicle.cp.mrAccelrator then
 				accelrator = -vehicle.cp.mrAccelrator -- The progressive breaking function returns a postive number which accelerates the tractor 
