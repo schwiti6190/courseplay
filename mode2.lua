@@ -440,7 +440,7 @@ function courseplay:unload_combine(vehicle, dt)
 	if tractor ~= nil and (aiTurn or tractor.cp.turnStage > 0) then
 		--courseplay:setInfoText(vehicle, "COURSEPLAY_COMBINE_IS_TURNING");
 		combineIsTurning = true
-		-- print(('%s: cp.turnStage=%d -> combineIsTurning=true'):format(nameNum(tractor), tractor.cp.turnStage));
+		courseplay.debugVehicle(4, tractor, 'cp.turnStage=%d -> combineIsTurning=true', tractor.cp.turnStage)
 	end
 
 	vehicle.cp.mode2DebugTurning = combineIsTurning
@@ -943,12 +943,21 @@ function courseplay:unload_combine(vehicle, dt)
 							courseplay:debug(string.format("%s(%i): %s @ %s: combine turns left, I'm right. Turning the New Way", curFile, debug.getinfo(1).currentline, nameNum(vehicle), tostring(combine.name)), 4);
 							local maxDiameter = max(20,vehicle.cp.turnDiameter)
 							local verticalWaypointShift = courseplay:getWaypointShift(vehicle,tractor)
+							local zOffset = trailerOffset+totalLength+(0.5*maxDiameter) -- Calc how far away we need to go to not turn past the field edge
+							local maxX,_,maxZ = localToWorld(vehicle.cp.DirectionNode,-maxDiameter,0,-(trailerOffset+(0.5*maxDiameter)));
 							tractor.cp.verticalWaypointShift = verticalWaypointShift
-							vehicle.cp.curTarget.x, vehicle.cp.curTarget.y, vehicle.cp.curTarget.z = localToWorld(vehicle.cp.DirectionNode, 0,0,3);
-							vehicle.cp.curTarget.rev = false
-							vehicle.cp.nextTargets  = courseplay:createTurnAwayCourse(vehicle,-1,maxDiameter,tractor.cp.workWidth)
-										
-							courseplay:addNewTargetVector(vehicle,tractor.cp.workWidth,-(max(maxDiameter +vehicle.cp.totalLength+extraAlignLength,maxDiameter +vehicle.cp.totalLength +extraAlignLength -verticalWaypointShift)))
+							-- Back away from field edge
+							vehicle.cp.curTarget.x, vehicle.cp.curTarget.y, vehicle.cp.curTarget.z = localToWorld(vehicle.cp.DirectionNode, 0,0,-zOffset);
+							vehicle.cp.curTarget.rev = true;
+							if courseplay:isField(maxX, maxZ, 1, 1) and courseplay:onWhichFieldAmI(vehicle) == courseplay:getFieldNumForPosition(maxX,maxZ) then --is the outside point of the course on the field and same field, the make a nice circle
+								courseplay.debugVehicle(4,vehicle,'Make a turn away from the chopper')
+								vehicle.cp.nextTargets  = courseplay:createTurnAwayCourse(vehicle,-1,maxDiameter,tractor.cp.workWidth,trailerOffset+(0.5*maxDiameter))
+							else -- if not turn into the fruit
+								courseplay.debugVehicle(4,vehicle,'Makeing a turn away from chopper would put me out side the field turn towards the chopper')
+								vehicle.cp.nextTargets  = courseplay:createTurnAwayCourse(vehicle,1,maxDiameter,tractor.cp.workWidth,trailerOffset+(0.5*maxDiameter))
+							end		
+							-- Reverse Back to the chopper and take into account if the chopper is working a digaonal field edge	
+							courseplay:addNewTargetVector(vehicle,tractor.cp.workWidth,-(max(maxDiameter +vehicle.cp.totalLength+extraAlignLength+zOffset,maxDiameter +vehicle.cp.totalLength +extraAlignLength+zOffset -verticalWaypointShift)))
 							courseplay:addNewTargetVector(vehicle,tractor.cp.workWidth, 2 +verticalWaypointShift,nil,nil,true);
 						else
 							courseplay:debug(string.format("%s(%i): %s @ %s: combine turns left, I'm right. Turning the Old Way", curFile, debug.getinfo(1).currentline, nameNum(vehicle), tostring(combine.name)), 4);
@@ -969,12 +978,21 @@ function courseplay:unload_combine(vehicle, dt)
 							courseplay:debug(string.format("%s(%i): %s @ %s: combine turns right, I'm left. Turning the new way", curFile, debug.getinfo(1).currentline, nameNum(vehicle), tostring(combine.name)), 4);
 							local maxDiameter = max(20,vehicle.cp.turnDiameter)
 							local verticalWaypointShift = courseplay:getWaypointShift(vehicle,tractor)
+							local maxX,_,maxZ = localToWorld(vehicle.cp.DirectionNode,maxDiameter,0,-(trailerOffset+(0.5*maxDiameter)));
+							local zOffset = trailerOffset+totalLength+(0.5*maxDiameter) -- Calc how far away we need to go to not turn past the field edge
 							tractor.cp.verticalWaypointShift = verticalWaypointShift
-							vehicle.cp.curTarget.x, vehicle.cp.curTarget.y, vehicle.cp.curTarget.z = localToWorld(vehicle.cp.DirectionNode, 0,0,3);
-							vehicle.cp.curTarget.rev = false
-							vehicle.cp.nextTargets  = courseplay:createTurnAwayCourse(vehicle,1,maxDiameter,tractor.cp.workWidth)
-
-							courseplay:addNewTargetVector(vehicle,-tractor.cp.workWidth,-(max(maxDiameter +vehicle.cp.totalLength+extraAlignLength,maxDiameter +vehicle.cp.totalLength +extraAlignLength -verticalWaypointShift)))
+							-- Back away from field edge
+							vehicle.cp.curTarget.x, vehicle.cp.curTarget.y, vehicle.cp.curTarget.z = localToWorld(vehicle.cp.DirectionNode, 0,0,-zOffset);
+							vehicle.cp.curTarget.rev = true;
+							if courseplay:isField(maxX, maxZ, 1, 1) and courseplay:onWhichFieldAmI(vehicle) == courseplay:getFieldNumForPosition(maxX,maxZ) then 
+								courseplay.debugVehicle(4,vehicle,'Make a turn away from the chopper')
+								vehicle.cp.nextTargets  = courseplay:createTurnAwayCourse(vehicle,1,maxDiameter,tractor.cp.workWidth,trailerOffset+(0.5*maxDiameter))
+							else -- if not turn into the fruit
+								courseplay.debugVehicle(4,vehicle,'Makeing a turn away from chopper would put me out side the field turn towards the chopper')
+								vehicle.cp.nextTargets  = courseplay:createTurnAwayCourse(vehicle,-1,maxDiameter,tractor.cp.workWidth,trailerOffset+(0.5*maxDiameter))
+						end	
+							-- Reverse Back to the chopper and take into account if the chopper is working a digaonal field edge
+							courseplay:addNewTargetVector(vehicle,-tractor.cp.workWidth,-(max(maxDiameter +vehicle.cp.totalLength+extraAlignLength+zOffset,maxDiameter +vehicle.cp.totalLength +extraAlignLength+zOffset -verticalWaypointShift)))
 							courseplay:addNewTargetVector(vehicle,-tractor.cp.workWidth, 2 +verticalWaypointShift,nil,nil,true);
 
 						else
@@ -1004,7 +1022,7 @@ function courseplay:unload_combine(vehicle, dt)
 			end
 		-- elseif vehicle.cp.modeState ~= STATE_FOLLOW_TARGET_WPS and vehicle.cp.modeState ~= 99 and not vehicle.cp.realisticDriving then
 			--Why is vehicle.cp.realisticDriving Here? Asking Cause I will get the tipper trying to unload the combine in the middle of a turn pops64
-		elseif vehicle.cp.modeState ~= STATE_FOLLOW_TARGET_WPS and vehicle.cp.modeState ~= STATE_WAIT_FOR_COMBINE_TO_GET_OUT_OF_WAY and not vehicle.cp.realisticDriving then
+		elseif vehicle.cp.modeState ~= STATE_FOLLOW_TARGET_WPS and vehicle.cp.modeState ~= STATE_WAIT_FOR_COMBINE_TO_GET_OUT_OF_WAY then --and not vehicle.cp.realisticDriving then
 			-- just wait until combine has turned
 			allowedToDrive = false
 			courseplay:setInfoText(vehicle, "COURSEPLAY_COMBINE_WANTS_ME_TO_STOP");
@@ -1415,7 +1433,16 @@ function courseplay:unload_combine(vehicle, dt)
 			end;
 		end;
 		
-		AIVehicleUtil.driveInDirection(vehicle, dt, vehicle.cp.steeringAngle, 1, 0.5, 10, allowedToDrive, moveForwards, lx, lz, refSpeed, 1)
+		-- MR needs braking assitance
+		local accelrator = 1
+		if vehicle.mrIsMrVehicle then
+			courseplay:mrProgressiveBreaking(vehicle, refSpeed)
+			if vehicle.cp.mrAccelrator then
+				accelrator = -vehicle.cp.mrAccelrator -- The progressive breaking function returns a postive number which accelerates the tractor 
+			end
+		end
+
+		AIVehicleUtil.driveInDirection(vehicle, dt, vehicle.cp.steeringAngle, accelrator, 0.5, 10, allowedToDrive, moveForwards, lx, lz, refSpeed, 1)
 				
 		--if courseplay.debugChannels[4] and vehicle.cp.nextTargets and vehicle.cp.curTarget.x and vehicle.cp.curTarget.z then
 		if (courseplay.debugChannels[4] or courseplay.debugChannels[9]) and vehicle.cp.curTarget.x and vehicle.cp.curTarget.z then

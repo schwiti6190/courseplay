@@ -514,10 +514,10 @@ function courseplay:start(self)
 	end;
 
 	--More Realistlitic Mod. Temp fix until we can fix the breaking problem. 
-	if self.mrUseMrTransmission and self.mrUseMrTransmission == true then
+	--[[ if self.mrUseMrTransmission and self.mrUseMrTransmission == true then
 		self.mrUseMrTransmission = false;
 		self.cp.changedMRMod = true;
-	end
+	end ]]
 	-- Initialize pure pursuit controller
 	self.cp.ppc:initialize()
 	--print("startStop "..debug.getinfo(1).currentline)
@@ -736,10 +736,14 @@ function courseplay:stop(self)
 	end;
 
 	--More Realistlitic Mod. Temp fix until we can fix the breaking problem. 
-	if self.mrUseMrTransmission ~= nil and self.cp.changedMRMod == true then
+	--[[ if self.mrUseMrTransmission ~= nil and self.cp.changedMRMod == true then
 		self.mrUseMrTransmission = true;
 		self.cp.changedMRMod = false;
-	end;
+	end; ]]
+
+	if self.mrIsMrVehicle then
+		self.cp.mrAccelrator = nil
+	end
 
 	if self.cp.hasDriveControl then
 		local changed = false;

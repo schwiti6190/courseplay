@@ -292,7 +292,7 @@ function courseplay:handleSugarCaneTrailer(vehicle, allowedToDrive, dt)
 	--Select the trailer to fill
 	local currentTipper = vehicle.cp.workTools[vehicle.cp.currentTrailerToFill]
 	local tipState = currentTipper.tipState
-	fillLevelPct = vehicle.cp.totalFillLevelPercent
+	local fillLevelPct = vehicle.cp.totalFillLevelPercent
 
 	-- Reset found trailer and look for a new one
 	if (tipState == Trailer.TIPSTATE_CLOSED or tipState == Trailer.TIPSTATE_CLOSING) and fillLevelPct > 0 then
