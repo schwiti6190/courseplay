@@ -1095,7 +1095,7 @@ function courseplay:drive(self, dt)
 						self.nextMovingDirection = 1
 					end;
 				end;
-				print(string.format('drive: fwd = %s, refSpeed = %d, acceleration = %d self.lastSpeedReal = %.4f',tostring(fwd),refSpeed,acceleration, self.lastSpeedReal))
+				--print(string.format('drive: fwd = %s, refSpeed = %d, acceleration = %d self.lastSpeedReal = %.4f',tostring(fwd),refSpeed,acceleration, self.lastSpeedReal))
 				--self,dt,steeringAngleLimit,acceleration,slowAcceleration,slowAngleLimit,allowedToDrive,moveForwards,lx,lz,maxSpeed,slowDownFactor,angle
 				AIVehicleUtil.driveInDirection(self, dt, self.cp.steeringAngle, acceleration, 0.5, 20, true, fwd, lx, lz, refSpeed, 1);
 			else

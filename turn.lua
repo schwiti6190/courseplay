@@ -744,7 +744,7 @@ function courseplay:turn(vehicle, dt)
 		end
 	end
 
-	print(string.format('turn: moveForwards = %s, allowedToDrive = %s, refSpeed = %d, directionForce = %d vehicle.lastSpeedReal = %.4f',tostring(moveForwards),tostring(allowedToDrive),refSpeed,directionForce, vehicle.lastSpeedReal))
+	--print(string.format('turn: moveForwards = %s, allowedToDrive = %s, refSpeed = %d, directionForce = %d vehicle.lastSpeedReal = %.4f',tostring(moveForwards),tostring(allowedToDrive),refSpeed,directionForce, vehicle.lastSpeedReal))
 	--vehicle,dt,steeringAngleLimit,acceleration,slowAcceleration,slowAngleLimit,allowedToDrive,moveForwards,lx,lz,maxSpeed,slowDownFactor,angle
 	if newTarget and ((newTarget.turnReverse and reversingWorkTool ~= nil) or (courseplay:onAlignmentCourse( vehicle ) and vehicle.cp.curTurnIndex < 2 )) then
 		if math.abs(vehicle.lastSpeedReal) < 0.0001 and  not g_currentMission.missionInfo.stopAndGoBraking then
