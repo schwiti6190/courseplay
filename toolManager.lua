@@ -963,6 +963,8 @@ function courseplay:unload_tippers(vehicle, allowedToDrive,dt)
 				local ex, ey, ez = worldToLocal(ctt.triggerEndId, x, y, z);
 				local startDistance = Utils.vector2Length(sx, sz);
 				local endDistance = Utils.vector2Length(ex, ez);
+				local totalLength = abs(endDistance - startDistance)*0.9;
+				local startUnloadDistance = abs(endDistance - startDistance)*0.1 -- Add an offset has 8 meters was not enough for other than standard giants silos
 				courseplay:debug(('%s: startDistance=%s, endDistance=%s -> trailerInTipRange=%s'):format(nameNum(tipper), tostring(startDistance), tostring(endDistance), tostring(trailerInTipRange)), 2);
 				--stop if we are not empty but near the end of the trigger
 				if 	tipper.cp.isTipping and (endDistance <1 or startDistance <1) then
@@ -974,7 +976,7 @@ function courseplay:unload_tippers(vehicle, allowedToDrive,dt)
 				-------------------------------
 				if vehicle.Waypoints[vehicle.cp.waypointIndex].rev or vehicle.cp.isReverseBGATipping then
 					if vehicle.cp.totalFillLevel > 0 then
-						if trailerInTipRange and ((startDistance > 8 and endDistance > 8) or vehicle.cp.keepOnTipping) then
+						if trailerInTipRange and ((startDistance > startUnloadDistance and endDistance > startUnloadDistance) or vehicle.cp.keepOnTipping) then
 							goForTipping = true
 							allowedToDrive = false
 							if vehicle.cp.lastValidTipDistance and not vehicle.cp.keepOnTipping then
@@ -997,7 +999,6 @@ function courseplay:unload_tippers(vehicle, allowedToDrive,dt)
 
 					-- Get the animation
 					local animation = tipper.tipAnimations[bestTipReferencePoint];
-					local totalLength = abs(endDistance - startDistance)*0.9;
 					local fillDelta = vehicle.cp.totalFillLevel / vehicle.cp.totalCapacity;
 					local totalTipDuration = ((animation.dischargeEndTime - animation.dischargeStartTime) / animation.animationOpenSpeedScale) * fillDelta / 1000;
 					local meterPrSeconds = totalLength / totalTipDuration;

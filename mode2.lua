@@ -440,7 +440,7 @@ function courseplay:unload_combine(vehicle, dt)
 	if tractor ~= nil and (aiTurn or tractor.cp.turnStage > 0) then
 		--courseplay:setInfoText(vehicle, "COURSEPLAY_COMBINE_IS_TURNING");
 		combineIsTurning = true
-		courseplay.debugVehicle(4, tractor, 'cp.turnStage=%d -> combineIsTurning=true', tractor.cp.turnStage)
+		--courseplay.debugVehicle(4, tractor, 'cp.turnStage=%d -> combineIsTurning=true', tractor.cp.turnStage)
 	end
 
 	vehicle.cp.mode2DebugTurning = combineIsTurning
@@ -761,7 +761,12 @@ function courseplay:unload_combine(vehicle, dt)
 				allowedToDrive = false
 				courseplay:setInfoText(vehicle, "COURSEPLAY_COMBINE_WANTS_ME_TO_STOP");				
 			end
-			if lz < -2 then
+			if combine.cp.isCaseIHA8800MR and lz < 2 and combineIsStopped then
+				-- Must stop ealier than other chopper because this sugarcane havester pipe does not empty past 90 degrees
+				print('combineIsStopped')
+				allowedToDrive = false
+				courseplay:setInfoText(vehicle, "COURSEPLAY_COMBINE_WANTS_ME_TO_STOP");
+			elseif lz < -2 then
 				allowedToDrive = false
 				courseplay:setInfoText(vehicle, "COURSEPLAY_COMBINE_WANTS_ME_TO_STOP");
 				-- courseplay:setModeState(vehicle, STATE_DRIVE_TO_COMBINE);
@@ -921,14 +926,13 @@ function courseplay:unload_combine(vehicle, dt)
 		if vehicle.cp.modeState == STATE_DRIVE_TO_PIPE or vehicle.cp.modeState == STATE_DRIVE_TO_REAR then
 			if combine.cp.isChopper then
 				local fruitSide = courseplay:sideToDrive(vehicle, combine, -10,true);
-				local maxDiameter = max(totalLength,turnDiameter)
-				local extraAlignLength = 9
-				if vehicle.cp.distances ~= nil and vehicle.cp.distances.frontWheelToRearWheel ~=nil then
-					extraAlignLength = vehicle.cp.distances.frontWheelToRearWheel*3;
-				end
-				--local extraAlignLength = courseplay:getDirectionNodeToTurnNodeLength(vehicle)*2+6;	
-				
-				--another new chopper turn maneuver by Thomas Gärtner  
+				local maxDiameter = vehicle.cp.turnDiameter or 20
+				local wpOffsetShiftVert = -courseplay:getWaypointShift(vehicle,tractor) -- Calc how far we need to shift to adjust for waypoint shift
+				local firstDistanceToReverse = trailerOffset+totalLength+.75*maxDiameter+wpOffsetShiftVert -- Calc how far away we need to go to not turn past the field edge
+				local turnCircleZOffset = trailerOffset+.75*maxDiameter+wpOffsetShiftVert	
+				courseplay.debugVehicle(4,vehicle,'maxDiameter = %d wpOffsetShiftVert = %d firstDistanceToReverse = %d turnCircleZOffset = %d',maxDiameter,wpOffsetShiftVert,firstDistanceToReverse,turnCircleZOffset)
+					
+				--another new chopper turn maneuver by Thomas Gärtner
 				if fruitSide == "left" then -- chopper will turn left
 
 					if vehicle.cp.combineOffset > 0 then -- I'm left of chopper
@@ -941,24 +945,20 @@ function courseplay:unload_combine(vehicle, dt)
 					else --i'm right of choppper
 						if vehicle.cp.isReversePossible and not autoCombineCircleMode and combine.cp.forcedSide == nil and combine.cp.multiTools == 1 and vehicle.cp.turnOnField then
 							courseplay:debug(string.format("%s(%i): %s @ %s: combine turns left, I'm right. Turning the New Way", curFile, debug.getinfo(1).currentline, nameNum(vehicle), tostring(combine.name)), 4);
-							local maxDiameter = max(20,vehicle.cp.turnDiameter)
-							local verticalWaypointShift = courseplay:getWaypointShift(vehicle,tractor)
-							local zOffset = trailerOffset+totalLength+(0.5*maxDiameter) -- Calc how far away we need to go to not turn past the field edge
-							local maxX,_,maxZ = localToWorld(vehicle.cp.DirectionNode,-maxDiameter,0,-(trailerOffset+(0.5*maxDiameter)));
-							tractor.cp.verticalWaypointShift = verticalWaypointShift
+							local maxX,_,maxZ = localToWorld(vehicle.cp.DirectionNode,maxDiameter,0,-(turnCircleZOffset));
 							-- Back away from field edge
-							vehicle.cp.curTarget.x, vehicle.cp.curTarget.y, vehicle.cp.curTarget.z = localToWorld(vehicle.cp.DirectionNode, 0,0,-zOffset);
+							vehicle.cp.chopperTurnManuver = true
+							vehicle.cp.curTarget.x, vehicle.cp.curTarget.y, vehicle.cp.curTarget.z = localToWorld(vehicle.cp.DirectionNode, 0,0,-firstDistanceToReverse);
 							vehicle.cp.curTarget.rev = true;
-							if courseplay:isField(maxX, maxZ, 1, 1) and courseplay:onWhichFieldAmI(vehicle) == courseplay:getFieldNumForPosition(maxX,maxZ) then --is the outside point of the course on the field and same field, the make a nice circle
+							if courseplay:isField(maxX, maxZ, 1, 1) and courseplay:onWhichFieldAmI(currentTipper) == courseplay:getFieldNumForPosition(maxX,maxZ) then --is the outside point of the course on the field and same field, the make a nice circle
 								courseplay.debugVehicle(4,vehicle,'Make a turn away from the chopper')
-								vehicle.cp.nextTargets  = courseplay:createTurnAwayCourse(vehicle,-1,maxDiameter,tractor.cp.workWidth,trailerOffset+(0.5*maxDiameter))
+								vehicle.cp.nextTargets  = courseplay:createTurnAwayCourse(vehicle,-1,maxDiameter,tractor.cp.workWidth,turnCircleZOffset)
 							else -- if not turn into the fruit
 								courseplay.debugVehicle(4,vehicle,'Makeing a turn away from chopper would put me out side the field turn towards the chopper')
-								vehicle.cp.nextTargets  = courseplay:createTurnAwayCourse(vehicle,1,maxDiameter,tractor.cp.workWidth,trailerOffset+(0.5*maxDiameter))
+								vehicle.cp.nextTargets  = courseplay:createTurnAwayCourse(vehicle,1,maxDiameter,-tractor.cp.workWidth,turnCircleZOffset)
 							end		
-							-- Reverse Back to the chopper and take into account if the chopper is working a digaonal field edge	
-							courseplay:addNewTargetVector(vehicle,tractor.cp.workWidth,-(max(maxDiameter +vehicle.cp.totalLength+extraAlignLength+zOffset,maxDiameter +vehicle.cp.totalLength +extraAlignLength+zOffset -verticalWaypointShift)))
-							courseplay:addNewTargetVector(vehicle,tractor.cp.workWidth, 2 +verticalWaypointShift,nil,nil,true);
+							-- Add striaght distance to striaght out the tractor
+							courseplay:addNewTargetVector(vehicle,tractor.cp.workWidth,-(2.25*maxDiameter+1.5*totalLength))
 						else
 							courseplay:debug(string.format("%s(%i): %s @ %s: combine turns left, I'm right. Turning the Old Way", curFile, debug.getinfo(1).currentline, nameNum(vehicle), tostring(combine.name)), 4);
 							vehicle.cp.curTarget.x, vehicle.cp.curTarget.y, vehicle.cp.curTarget.z = localToWorld(vehicle.cp.DirectionNode, turnDiameter*-1, 0, turnDiameter);
@@ -976,24 +976,20 @@ function courseplay:unload_combine(vehicle, dt)
 					else -- I'm left of chopper
 						if vehicle.cp.isReversePossible and not autoCombineCircleMode and combine.cp.forcedSide == nil and combine.cp.multiTools == 1 and vehicle.cp.turnOnField then
 							courseplay:debug(string.format("%s(%i): %s @ %s: combine turns right, I'm left. Turning the new way", curFile, debug.getinfo(1).currentline, nameNum(vehicle), tostring(combine.name)), 4);
-							local maxDiameter = max(20,vehicle.cp.turnDiameter)
-							local verticalWaypointShift = courseplay:getWaypointShift(vehicle,tractor)
-							local maxX,_,maxZ = localToWorld(vehicle.cp.DirectionNode,maxDiameter,0,-(trailerOffset+(0.5*maxDiameter)));
-							local zOffset = trailerOffset+totalLength+(0.5*maxDiameter) -- Calc how far away we need to go to not turn past the field edge
-							tractor.cp.verticalWaypointShift = verticalWaypointShift
 							-- Back away from field edge
-							vehicle.cp.curTarget.x, vehicle.cp.curTarget.y, vehicle.cp.curTarget.z = localToWorld(vehicle.cp.DirectionNode, 0,0,-zOffset);
+							local maxX,_,maxZ = localToWorld(vehicle.cp.DirectionNode,-maxDiameter,0,-(turnCircleZOffset));
+							vehicle.cp.chopperTurnManuver = true
+							vehicle.cp.curTarget.x, vehicle.cp.curTarget.y, vehicle.cp.curTarget.z = localToWorld(vehicle.cp.DirectionNode, 0,0,-firstDistanceToReverse);
 							vehicle.cp.curTarget.rev = true;
-							if courseplay:isField(maxX, maxZ, 1, 1) and courseplay:onWhichFieldAmI(vehicle) == courseplay:getFieldNumForPosition(maxX,maxZ) then 
+							if courseplay:isField(maxX, maxZ, 1, 1) and courseplay:onWhichFieldAmI(currentTipper) == courseplay:getFieldNumForPosition(maxX,maxZ) then --is the outside point of the course on the field and same field, the make a nice circle
 								courseplay.debugVehicle(4,vehicle,'Make a turn away from the chopper')
-								vehicle.cp.nextTargets  = courseplay:createTurnAwayCourse(vehicle,1,maxDiameter,tractor.cp.workWidth,trailerOffset+(0.5*maxDiameter))
+								vehicle.cp.nextTargets  = courseplay:createTurnAwayCourse(vehicle,1,maxDiameter,tractor.cp.workWidth,turnCircleZOffset)
 							else -- if not turn into the fruit
 								courseplay.debugVehicle(4,vehicle,'Makeing a turn away from chopper would put me out side the field turn towards the chopper')
-								vehicle.cp.nextTargets  = courseplay:createTurnAwayCourse(vehicle,-1,maxDiameter,tractor.cp.workWidth,trailerOffset+(0.5*maxDiameter))
-						end	
-							-- Reverse Back to the chopper and take into account if the chopper is working a digaonal field edge
-							courseplay:addNewTargetVector(vehicle,-tractor.cp.workWidth,-(max(maxDiameter +vehicle.cp.totalLength+extraAlignLength+zOffset,maxDiameter +vehicle.cp.totalLength +extraAlignLength+zOffset -verticalWaypointShift)))
-							courseplay:addNewTargetVector(vehicle,-tractor.cp.workWidth, 2 +verticalWaypointShift,nil,nil,true);
+								vehicle.cp.nextTargets  = courseplay:createTurnAwayCourse(vehicle,-1,maxDiameter,-tractor.cp.workWidth,turnCircleZOffset)
+							end	
+							-- Add striaght distance to striaght out the tractor
+							courseplay:addNewTargetVector(vehicle,-tractor.cp.workWidth,-(2.25*maxDiameter+1.5*totalLength));
 
 						else
 							courseplay:debug(string.format("%s(%i): %s @ %s: combine turns right, I'm left. Turning the old way", curFile, debug.getinfo(1).currentline, nameNum(vehicle), tostring(combine.name)), 4);
@@ -1034,9 +1030,21 @@ function courseplay:unload_combine(vehicle, dt)
 	if vehicle.cp.modeState == STATE_WAIT_FOR_PIPE then
 		if not combineIsTurning then
 			--courseplay:setModeState(vehicle, STATE_DRIVE_TO_COMBINE);
-			courseplay:setModeState(vehicle, STATE_DRIVE_TO_PIPE);
+			if combine.cp.isChopper and vehicle.cp.chopperTurnManuver then
+				-- We have finshed turning around and the chopper is turned around use its location to determine how far we need to back up
+				vehicle.cp.curTarget.x, vehicle.cp.curTarget.y, vehicle.cp.curTarget.z =  localToWorld(combine.pipeRaycastNode,vehicle.cp.combineOffset,0,-(totalLength+trailerOffset+5));
+				vehicle.cp.curTarget.rev = true;
+				vehicle.cp.chopperTurnManuver = nil
+				courseplay:setModeState(vehicle, STATE_FOLLOW_TARGET_WPS);
+				courseplay:setMode2NextState(vehicle, STATE_WAIT_FOR_PIPE);
+			else
+				courseplay:setModeState(vehicle, STATE_DRIVE_TO_PIPE);
+			end
 		else
 			courseplay:setInfoText(vehicle, "COURSEPLAY_WAITING_FOR_COMBINE_TURNED");
+			if combine.cp.isChopper and vehicle.cp.chopperTurnManuver then
+				allowedToDrive = false
+			end
 		end
 		refSpeed = vehicle.cp.speeds.turn
 		speedDebugLine = ("mode2("..tostring(debug.getinfo(1).currentline-1).."): refSpeed = "..tostring(refSpeed))
@@ -1187,7 +1195,9 @@ function courseplay:unload_combine(vehicle, dt)
 			else
 				-- no more waypoints left
 				allowedToDrive = false
+				--[[ we are following waypoints mode (for instance because we were in STATE_DRIVE_TO_COMBINE but 
        			--[[ we are following waypoints mode (for instance because we were in STATE_DRIVE_TO_COMBINE but 
+				--[[ we are following waypoints mode (for instance because we were in STATE_DRIVE_TO_COMBINE but 
 					due the the realistic driving settings, we switched to STATE_FOLLOW_TARGET_WPS).
 					now, we are attempting to switch back to drive to combine mode]]
 				if vehicle.cp.mode2nextState == STATE_WAIT_FOR_PIPE or vehicle.cp.mode2nextState == STATE_DRIVE_TO_PIPE then
@@ -1596,7 +1606,7 @@ end;
 function courseplay:setModeState(vehicle, state, debugLevel)
 	debugLevel = debugLevel or 2;
  	if vehicle.cp.modeState ~= state then
-		courseplay:debug( string.format( "%s: Switching state: %d -> %d", nameNum( vehicle ), vehicle.cp.modeState, Utils.getNoNil( state, -1 )), 9 )
+		courseplay:debug( string.format( "%s: Switching state: %d -> %d", nameNum( vehicle ), vehicle.cp.modeState, Utils.getNoNil( state, -1 )), 4 )
 		vehicle.cp.modeState = state;
 	end;
 	if vehicle.cp.isParking and state == STATE_WAIT_AT_START then
@@ -1834,7 +1844,8 @@ function courseplay:getWaypointShift(vehicle,tractor)
 		local nx,nz = tractor.Waypoints[tractor.cp.waypointIndex+1].cx, tractor.Waypoints[tractor.cp.waypointIndex+1].cz
 		local ny = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, nx, 0, nz)
 		local _,_,npShift = worldToLocal(tractor.cp.DirectionNode,nx,ny,nz)
-		return npShift-vehicleShift+tractor.sizeLength*0.5;
+		
+		return npShift-vehicleShift
 	end
 end
 

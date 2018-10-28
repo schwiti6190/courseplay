@@ -485,6 +485,9 @@ function courseplay:setNameVariable(workTool)
 		workTool.cp.isSeedHawkXLAirDrill84 = true;
 		workTool.cp.overwriteTurnRadius = 10;
 
+	--Great Plains YP2425A [Giants Big Bud DLC]
+	elseif workTool.cp.xmlFileName == 'greatPlainsYP2425A.xml' then
+		workTool.cp.notToBeReversed = true;
 	end;
 	-- ###########################################################
 	-- END OF GIANTS DEFAULT / DLC / MOD
@@ -888,7 +891,7 @@ function courseplay:askForSpecialSettings(self, object)
 		self.cp.backMarkerOffset = 4.5;
 		self.isStrawEnabled = false;
 	elseif self.cp.isCaseIHA8800MR then
-		self.cp.changeDirAngle = 10;
+		self.cp.changeDirAngle = 1;
 	end;
 
 	-- OBJECTS
