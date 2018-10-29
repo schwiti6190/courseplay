@@ -1393,6 +1393,8 @@ function courseplay:getIsVehicleOffsetValid(vehicle, isLoadUnloadWait)
 			return (courseplay:isInWaitArea(vehicle, 6, 3, 3, 1) or (vehicle.cp.makeHeaps and courseplay:isInUnloadArea(vehicle, 6, 3, 3, 1, 2)) ) and not vehicle.cp.mode7GoBackBeforeUnloading;
 		elseif vehicle.cp.mode == courseplay.MODE_LIQUIDMANURE_TRANSPORT then
 			return courseplay:isInWaitArea(vehicle, 6, 3, nil, 1) or courseplay:isInUnloadArea(vehicle, 6, 3, nil, 1);
+		elseif vehicle.cp.mode == courseplay.MODE_SEED_FERTILIZE then
+			return courseplay:isInWaitArea(vehicle, 6, 3, vehicle.cp.stopWork+1, 3)
 		end;
 	end;
 

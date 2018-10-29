@@ -424,6 +424,9 @@ function courseplay:setNameVariable(workTool)
 		workTool.cp.isAgrisemCultiplowPlatinum8m = true;
 		workTool.cp.notToBeReversed = true; --TODO Fix reverseing with this tool. The distances on this tool are calculated incorrectly causeing the reverse turn to fail
 		workTool.cp.overwriteTurnRadius = 7;
+	
+	elseif workTool.cp.xmlFileName == 'BednarSM18000.xml' then
+		workTool.cp.isBednarSM18000 = true
 
 	-- PLOUGHS [Giants]
 	-- Amazone Cayron 200 [Giants]

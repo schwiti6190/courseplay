@@ -930,6 +930,9 @@ function courseplay:unload_combine(vehicle, dt)
 				local wpOffsetShiftVert = -courseplay:getWaypointShift(vehicle,tractor) -- Calc how far we need to shift to adjust for waypoint shift
 				local firstDistanceToReverse = trailerOffset+totalLength+.75*maxDiameter+wpOffsetShiftVert -- Calc how far away we need to go to not turn past the field edge
 				local turnCircleZOffset = trailerOffset+.75*maxDiameter+wpOffsetShiftVert	
+				local secondDistanceToReverse = (totalLength/2)-trailerOffset+5-wpOffsetShiftVert
+				local straightingDistance = 2.25*maxDiameter+1.5*totalLength+wpOffsetShiftVert
+				tractor.cp.verticalWaypointShift = wpOffsetShiftVert
 				courseplay.debugVehicle(4,vehicle,'maxDiameter = %d wpOffsetShiftVert = %d firstDistanceToReverse = %d turnCircleZOffset = %d',maxDiameter,wpOffsetShiftVert,firstDistanceToReverse,turnCircleZOffset)
 					
 				--another new chopper turn maneuver by Thomas Gärtner
@@ -958,7 +961,8 @@ function courseplay:unload_combine(vehicle, dt)
 								vehicle.cp.nextTargets  = courseplay:createTurnAwayCourse(vehicle,1,maxDiameter,-tractor.cp.workWidth,turnCircleZOffset)
 							end		
 							-- Add striaght distance to striaght out the tractor
-							courseplay:addNewTargetVector(vehicle,tractor.cp.workWidth,-(2.25*maxDiameter+1.5*totalLength))
+							courseplay:addNewTargetVector(vehicle,tractor.cp.workWidth,-(straightingDistance))
+							courseplay:addNewTargetVector(vehicle,tractor.cp.workWidth , secondDistanceToReverse, nil,nil,true );
 						else
 							courseplay:debug(string.format("%s(%i): %s @ %s: combine turns left, I'm right. Turning the Old Way", curFile, debug.getinfo(1).currentline, nameNum(vehicle), tostring(combine.name)), 4);
 							vehicle.cp.curTarget.x, vehicle.cp.curTarget.y, vehicle.cp.curTarget.z = localToWorld(vehicle.cp.DirectionNode, turnDiameter*-1, 0, turnDiameter);
@@ -989,7 +993,8 @@ function courseplay:unload_combine(vehicle, dt)
 								vehicle.cp.nextTargets  = courseplay:createTurnAwayCourse(vehicle,-1,maxDiameter,-tractor.cp.workWidth,turnCircleZOffset)
 							end	
 							-- Add striaght distance to striaght out the tractor
-							courseplay:addNewTargetVector(vehicle,-tractor.cp.workWidth,-(2.25*maxDiameter+1.5*totalLength));
+							courseplay:addNewTargetVector(vehicle,-tractor.cp.workWidth,-(straightingDistance));
+							courseplay:addNewTargetVector(vehicle,-tractor.cp.workWidth , secondDistanceToReverse, nil,nil,true );
 
 						else
 							courseplay:debug(string.format("%s(%i): %s @ %s: combine turns right, I'm left. Turning the old way", curFile, debug.getinfo(1).currentline, nameNum(vehicle), tostring(combine.name)), 4);
@@ -1030,21 +1035,9 @@ function courseplay:unload_combine(vehicle, dt)
 	if vehicle.cp.modeState == STATE_WAIT_FOR_PIPE then
 		if not combineIsTurning then
 			--courseplay:setModeState(vehicle, STATE_DRIVE_TO_COMBINE);
-			if combine.cp.isChopper and vehicle.cp.chopperTurnManuver then
-				-- We have finshed turning around and the chopper is turned around use its location to determine how far we need to back up
-				vehicle.cp.curTarget.x, vehicle.cp.curTarget.y, vehicle.cp.curTarget.z =  localToWorld(combine.pipeRaycastNode,vehicle.cp.combineOffset,0,-(totalLength+trailerOffset+5));
-				vehicle.cp.curTarget.rev = true;
-				vehicle.cp.chopperTurnManuver = nil
-				courseplay:setModeState(vehicle, STATE_FOLLOW_TARGET_WPS);
-				courseplay:setMode2NextState(vehicle, STATE_WAIT_FOR_PIPE);
-			else
-				courseplay:setModeState(vehicle, STATE_DRIVE_TO_PIPE);
-			end
+			courseplay:setModeState(vehicle, STATE_DRIVE_TO_PIPE);
 		else
 			courseplay:setInfoText(vehicle, "COURSEPLAY_WAITING_FOR_COMBINE_TURNED");
-			if combine.cp.isChopper and vehicle.cp.chopperTurnManuver then
-				allowedToDrive = false
-			end
 		end
 		refSpeed = vehicle.cp.speeds.turn
 		speedDebugLine = ("mode2("..tostring(debug.getinfo(1).currentline-1).."): refSpeed = "..tostring(refSpeed))
