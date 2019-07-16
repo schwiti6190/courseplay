@@ -115,6 +115,11 @@ function courseplay:loadCourse(vehicle, id, useRealId, addCourseAtEnd) -- fn is 
 			addCourseAtEnd = true;
 		end
 
+		if not g_currentMission.cp_courses[id].waypoints then
+			courseplay.debugVehicle(8, vehicle, 'Loading course %d (%s)', id, g_currentMission.cp_courses[id].nameClean)
+			courseplay.courses:loadCourseFromFile(g_currentMission.cp_courses[id])
+		end
+
 		local course = g_currentMission.cp_courses[id]
 		if course == nil then
 			courseplay:debug(string.format('\tid %d -> course not found, return', id), 8);
@@ -547,11 +552,13 @@ end
 
 function courseplay.courses:resetMerged()
 	for _,course in pairs(g_currentMission.cp_courses) do
-		for num, wp in pairs(course.waypoints) do
-			wp.merged = nil;
+		if course.waypoints then
+			for num, wp in pairs(course.waypoints) do
+				wp.merged = nil;
+			end;
 		end;
 	end;
-end;
+end
 
 function courseplay:deleteSortedItem(vehicle, index) -- fn is in courseplay because it's vehicle based
 	local id = vehicle.cp.hud.courses[index].id
@@ -1580,8 +1587,10 @@ function courseplay:normalizeUTF8(str)
 	return str:lower();
 end;
 
-function courseplay.courses:loadCourse(slotId, slot, courseXmlFilePath)
-	local courseXml = loadXMLFile("courseXml", courseXmlFilePath)
+--- Load course data from file
+---@param course table table with course header data
+function courseplay.courses:loadCourseFromFile(course)
+	local courseXml = loadXMLFile("courseXml", course.xmlFilePath)
 
 	-- current course
 	local courseKey = "course";
@@ -1666,19 +1675,10 @@ function courseplay.courses:loadCourse(slotId, slot, courseXmlFilePath)
 		};
 		wpNum = wpNum + 1;
 	end; -- END while true (waypoints)
-	local course = {
-		id =				  id,
-		uid =				  'c' .. id ,
-		type =				  'course',
-		name =				  courseName,
-		nameClean =			  courseNameClean,
-		waypoints =			  waypoints,
-		parent =			  parent,
-		workWidth =			  workWidth,
-		numHeadlandLanes =	  numHeadlandLanes,
-		headlandDirectionCW = headlandDirectionCW,
-		multiTools = 		  multiTools
-	};
+	course.waypoints =			  waypoints
+	course.workWidth =			  workWidth
+	course.numHeadlandLanes =	  numHeadlandLanes
+	course.headlandDirectionCW =  headlandDirectionCW
+	course.multiTools = 		  multiTools
 	delete(courseXml);
-	return id, course
 end
