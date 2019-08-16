@@ -438,7 +438,6 @@ function courseplay.courses:sort(courses_to_sort, folders_to_sort, parent_id, le
 		courses_to_sort = courseplay.utils.table.copy(courses_to_sort)
 		folders_to_sort = courseplay.utils.table.copy(folders_to_sort)
 	end
-	
 	local sorted = {}
 	sorted.item = {}
 	sorted.info = {}
@@ -577,7 +576,7 @@ function courseplay:deleteSortedItem(vehicle, index) -- fn is in courseplay beca
 		-- check for children: delete only if folder has no children
 		if g_currentMission.cp_sorted.info['f'..id].lastChild == 0 then
 			self.courses:removeFromManagerXml(type, id);
-			g_currentMission.cp_folders[id] = nil
+			self.courses:removeFolder(id)
 		end
 	else
 		--Error?!
@@ -638,8 +637,10 @@ function courseplay.courses:saveFoldersToXml(cpCManXml)
 	end;
 
 	local index = 0;
-	for k,_ in pairs(g_currentMission.cp_folders) do
-		self:saveFolderToXml(k, cpCManXml, index);
+	for k, folder in pairs(g_currentMission.cp_folders) do
+		if not folder.virtual then
+			self:saveFolderToXml(k, cpCManXml, index);
+		end
 		index = index + 1;
 	end;
 
@@ -1283,6 +1284,7 @@ function courseplay.courses:getMeOrBestFit(self, index)
 end
 
 function courseplay.courses:reloadVehicleCourses(vehicle)
+	self:addAutoDriveDestinations()
 	if vehicle ~= nil then
 		-- reload courses (sort)
 		if vehicle.cp.hud.filter == '' then
@@ -1316,7 +1318,7 @@ function courseplay.courses:reloadVehicleCourses(vehicle)
 		
 		-- update items for the hud
 		courseplay.hud.reloadCourses(vehicle);
-		
+		courseplay.debugVehicle(8, vehicle, 'reloadVehicleCourses')
 		vehicle.cp.reloadCourseItems = false
 	end -- end vehicle ~= nil
 end
@@ -1468,10 +1470,6 @@ function courseplay.courses:loadCoursesAndFoldersFromXml()
 			end
 			save = true
 		end
-
-		if CpManager.oldCPFileExists then
-			save, courses_by_id, folders_by_id = CpManager:importOldCPFiles(save, courses_by_id, folders_by_id);
-		end;
 
 		if save then
 			-- this will update courseManager file and therefore update the courses and folders without ids.
@@ -1687,4 +1685,64 @@ function courseplay.courses:loadCourseFromFile(course)
 	course.headlandDirectionCW =  headlandDirectionCW
 	course.multiTools = 		  multiTools
 	delete(courseXml);
+end
+
+
+function courseplay.courses:addAutoDriveDestinations()
+	if FS19_AutoDrive.AutoDrive then
+		if not self:getAutoDriveDestinationsFolder() then
+			local id = #g_currentMission.cp_folders + 1
+			g_currentMission.cp_folders[id] = { id =id, uid = 'f' .. id,
+												type = 'folder',
+												name = 'Autodrive',
+												nameClean = 'Autodrive',
+												parent = 0,
+												virtual = true,
+												autodrive = true}
+			courseplay.settings.add_folder(id)
+			local destinations = FS19_AutoDrive.AutoDrive:GetAvailableDestinations()
+			for _, destination in ipairs(destinations) do
+				print(destination.name)
+			end
+		end
+		g_currentMission.cp_sorted = self:sort(g_currentMission.cp_courses, g_currentMission.cp_folders, 0, 0)
+	end
+end
+
+function courseplay.courses:getAutoDriveDestinationsFolder()
+	for id, folder in pairs(g_currentMission.cp_folders) do
+		if folder.autodrive then return id, folder end
+	end
+	return nil
+end
+
+function courseplay.courses:moveFolder(oldID, newID)
+
+	g_currentMission.cp_folders[newID] = g_currentMission.cp_folders[oldID]
+	g_currentMission.cp_folders[oldID] = nil
+	g_currentMission.cp_folders[newID].id = newID
+	g_currentMission.cp_folders[newID].uid = 'f' .. newID
+
+	for _, v in pairs(g_currentMission.enterables) do
+		if v.hasCourseplaySpec then
+			v.cp.folder_settings[newID] = v.cp.folder_settings[oldID]
+			v.cp.folder_settings[oldID] = {}
+		end
+	end
+end
+
+function courseplay.courses:removeFolder(id)
+	g_currentMission.cp_folders[id] = nil
+	-- make sure there's no gap between the virtual Autodrive folder and the last real folder
+	local autoDriveFolderId, _ = self:getAutoDriveDestinationsFolder()
+	local lastRealFolderId = 0
+	for i = autoDriveFolderId - 1, 1, -1 do
+		if g_currentMission.cp_folders[i] ~= nil then
+			lastRealFolderId = i
+			break
+		end
+	end
+	if autoDriveFolderId ~= lastRealFolderId + 1 then
+		self:moveFolder(autoDriveFolderId, lastRealFolderId + 1)
+	end
 end

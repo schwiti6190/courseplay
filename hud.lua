@@ -2220,6 +2220,7 @@ end
 --update functions 
 function courseplay.hud:updateCourseList(vehicle, page)
 	-- update courses?
+	courseplay.debugVehicle(8, vehicle, 'updateCourseList(): reload courses %s', tostring(vehicle.cp.reloadCourseItems))
 	if vehicle.cp.reloadCourseItems then
 		courseplay.courses:reloadVehicleCourses(vehicle)
 		CourseplayEvent.sendEvent(vehicle,'self.cp.onMpSetCourses',true)
@@ -2296,6 +2297,8 @@ function courseplay.hud:updateCourseButtonsVisibilty(vehicle)
 			else
 				if vehicle.cp.hud.courses[row].type == 'folder' and (fn == 'loadSortedCourse' or fn == 'addSortedCourse') then
 					show = false;
+				elseif vehicle.cp.hud.courses[row].virtual then
+					show, enable = false, false
 				elseif vehicle.cp.hud.choose_parent ~= true then
 					if fn == 'deleteSortedItem' and vehicle.cp.hud.courses[row].type == 'folder' and g_currentMission.cp_sorted.info[ vehicle.cp.hud.courses[row].uid ].lastChild ~= 0 then
 						enable = false;
@@ -2332,10 +2335,17 @@ function courseplay.hud:updateSaveButtonActive(vehicle,state,active,page)
 end
 
 function courseplay.hud:showShiftHudButtons(vehicle, show)
-	local previousLine, nextLine = courseplay.settings.validateCourseListArrows(vehicle);
-	vehicle.cp.hud.courseListPrevButton:setShow(previousLine and show) 
-	vehicle.cp.hud.courseListNextButton:setShow(nextLine and show) 
-	vehicle.cp.hud.courseListMouseArea:setShow(show) 
+	local previousLine, nextLine
+	if show then
+		-- call validateCourseListArrows() only if we want to show those buttons otherwise (due to the CP fashion of
+		-- using global variables and functions with side effects all over the place) there is no guarantee that all the
+		-- global data used by that function is updated (for example when adding folders and then tabbing to another
+		-- vehicle which does not have the courses HUD page selected)
+		previousLine, nextLine = courseplay.settings.validateCourseListArrows(vehicle);
+	end
+	vehicle.cp.hud.courseListPrevButton:setShow(previousLine and show)
+	vehicle.cp.hud.courseListMouseArea:setShow(show)
+	vehicle.cp.hud.courseListNextButton:setShow(nextLine and show)
 end
 
 -- Hud content functions
