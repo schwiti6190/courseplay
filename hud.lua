@@ -2295,10 +2295,22 @@ function courseplay.hud:updateCourseButtonsVisibilty(vehicle)
 					end;
 				end;
 			else
+				-- jeez what a mess...
 				if vehicle.cp.hud.courses[row].type == 'folder' and (fn == 'loadSortedCourse' or fn == 'addSortedCourse') then
 					show = false;
 				elseif vehicle.cp.hud.courses[row].virtual then
-					show, enable = false, false
+					if vehicle.cp.hud.courses[row].type == 'folder' then
+						-- there's nothing you can do with virtual folders
+						show, enable = false, false
+					elseif vehicle.cp.hud.courses[row].type == 'course' then
+						if fn == 'loadSortedCourse' or fn == 'addSortedCourse' then
+							-- you can load and append virtual courses
+							show, enable = true, true
+						else
+							-- but nothing else.
+							show, enable = false, false
+						end
+					end
 				elseif vehicle.cp.hud.choose_parent ~= true then
 					if fn == 'deleteSortedItem' and vehicle.cp.hud.courses[row].type == 'folder' and g_currentMission.cp_sorted.info[ vehicle.cp.hud.courses[row].uid ].lastChild ~= 0 then
 						enable = false;
