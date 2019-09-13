@@ -451,6 +451,7 @@ function CombineAIDriver:startTurn(ix)
 	end
 	local cornerCourse, nextIx = self:createHeadlandCornerCourse(ix, self.turnContext)
 	if cornerCourse then
+		cornerCourse:print()
 		self:debug('Starting a corner with a course with %d waypoints, will continue fieldwork at waypoint %d',
 			cornerCourse:getNumberOfWaypoints(), nextIx)
 		self.fieldworkState = self.states.TURNING
@@ -490,14 +491,14 @@ function CombineAIDriver:createInnerHeadlandCornerCourse(turnContext)
 	wp = corner:getPointAtDistanceFromCornerStart(-self.vehicle.cp.workWidth / 2 - offset, -offset)
 	table.insert(cornerWaypoints, wp)
 	-- reverse back to set up for the headland after the corner
-	wp = corner:getPointAtDistanceFromCornerEnd(-turnRadius * 0.5, self.vehicle.cp.workWidth / 2 + offset)
+	wp = corner:getPointAtDistanceFromCornerEnd(-turnRadius * 0.5, self.vehicle.cp.workWidth / 2)
 	wp.rev = true
 	table.insert(cornerWaypoints, wp)
 	-- this last waypoint isn't really needed. The only reason we add it is to turn the combine into the
 	-- (sort of) new direction before finishing the turn, so if this is a combine on multitool turn with offset on
 	-- the inner side of the corner, it'll find the right waypoint to continue and does not drive a loop (at least until
 	-- we properly generate offset courses as those have a problem at corners)
-	wp = corner:getPointAtDistanceFromCornerEnd(self.vehicle.cp.workWidth / 2, self.vehicle.cp.workWidth / 3)
+	wp = corner:getPointAtDistanceFromCornerEnd(self.vehicle.cp.workWidth / 2, self.vehicle.cp.workWidth / 4)
 	table.insert(cornerWaypoints, wp)
 	return Course(self.vehicle, cornerWaypoints, true), turnContext.turnEndWpIx
 end
@@ -509,8 +510,8 @@ function CombineAIDriver:createOuterHeadlandCornerCourse(turnContext)
 	local turnRadius = self.vehicle.cp.turnDiameter / 2
 	local offset = math.min(turnRadius * 0.6, self.vehicle.cp.workWidth)
 	local corner = turnContext:createCorner(self.vehicle, turnRadius)
-	local d = -self.vehicle.cp.workWidth / 2 + self.frontMarkerDistance
-	local wp = corner:getPointAtDistanceFromCornerStart(d + 2)
+	local d = - self.vehicle.cp.workWidth / 2 + self.frontMarkerDistance
+	local wp = corner:getPointAtDistanceFromCornerStart(d + 1)
 	wp.speed = self.vehicle.cp.speeds.turn * 0.75
 	table.insert(cornerWaypoints, wp)
 	-- drive forward up to the field edge
@@ -541,10 +542,10 @@ function CombineAIDriver:createOuterHeadlandCornerCourse(turnContext)
 	wp = corner:getPointAtDistanceFromCornerStart(d + turnRadius)
 	wp.rev = true
 	table.insert(cornerWaypoints, wp)
-	wp = corner:getPointAtDistanceFromCornerEnd(turnRadius / 3, turnRadius / 4)
+	wp = corner:getPointAtDistanceFromCornerEnd(turnRadius / 3, self.vehicle.cp.workWidth / 3)
 	wp.speed = self.vehicle.cp.speeds.turn * 0.5
 	table.insert(cornerWaypoints, wp)
-	wp = corner:getPointAtDistanceFromCornerEnd(turnRadius, turnRadius / 4)
+	wp = corner:getPointAtDistanceFromCornerEnd(turnRadius, self.vehicle.cp.workWidth / 4)
 	wp.speed = self.vehicle.cp.speeds.turn * 0.5
 	table.insert(cornerWaypoints, wp)
 	return Course(self.vehicle, cornerWaypoints, true), turnContext.turnEndWpIx

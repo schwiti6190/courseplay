@@ -1635,7 +1635,7 @@ end
 
 
 function courseplay:saveToXMLFile(xmlFile, key, usedModNames)
-	if not self.cp then
+	if not self.hasCourseplaySpec then
 		courseplay.infoVehicle(self, 'has no Courseplay installed, not adding Courseplay data to savegame.')
 		return
 	end
