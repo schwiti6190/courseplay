@@ -28,16 +28,25 @@ function courseplay:goReverse(vehicle,lx,lz,mode2)
 	if isNotValid then
 		-- Simple reversing, no trailer to back up, so set the direction and get out of here, no need for
 		-- all the sophisticated reversing
+		-- for articulated vehicles use the articulated axis' rotation node as it is a better indicator or the
+		-- vehicle's orientation than the direction node which often turns/moves with an articulated vehicle part
+		-- TODO: consolidate this with AITurn:getTurnNode()
+		local turnNode
+		if SpecializationUtil.hasSpecialization(ArticulatedAxis, vehicle.specializations) and vehicle.spec_articulatedAxis.rotationNode then
+			turnNode = vehicle.spec_articulatedAxis.rotationNode
+		else
+			turnNode = vehicle.cp.DirectionNode
+		end
 		if newTarget then
 			-- If we have the revPosX, revPosZ set, use those
 			if newTarget.revPosX and newTarget.revPosZ then
-				local _, vehicleY, _ = getWorldTranslation(vehicle.cp.DirectionNode);
-				lx, lz = AIVehicleUtil.getDriveDirection(vehicle.cp.DirectionNode, newTarget.revPosX, vehicleY, newTarget.revPosZ);
+				local _, vehicleY, _ = getWorldTranslation(turnNode);
+				lx, lz = AIVehicleUtil.getDriveDirection(turnNode, newTarget.revPosX, vehicleY, newTarget.revPosZ);
 			end;
 		elseif vehicle.cp.mode ~= 9 then
 			-- Start: Fixes issue #525
-			local tx, ty, tz = localToWorld(vehicle.cp.DirectionNode, 0, 1, -3);
-			local nx, ny, nz = localDirectionToWorld(vehicle.cp.DirectionNode, lx, -0,1, lz);
+			local tx, ty, tz = localToWorld(turnNode, 0, 1, -3);
+			local nx, ny, nz = localDirectionToWorld(turnNode, lx, -0,1, lz);
 			courseplay:doTriggerRaycasts(vehicle, 'tipTrigger', 'rev', false, tx, ty, tz, nx, ny, nz);
 			--  End:  Fixes issue #525
 		end

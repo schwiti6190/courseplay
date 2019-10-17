@@ -122,13 +122,21 @@ end
 function AITurn:endTurn(dt)
 	-- keep driving on the turn ending temporary course until we need to lower our implements
 	-- check implements only if we are more or less in the right direction (next row's direction)
-	if self.turnContext:isDirectionCloseToEndDirection(self.driver:getDirectionNode()) and
+	if self.turnContext:isDirectionCloseToEndDirection(self:getTurnNode(), 30) and
 		self.driver:shouldLowerImplements(self.turnContext.turnEndWpNode.node, false) then
 		self.driver:lowerImplements()
 		self:debug('Turn ended, continue on row')
 		self.state = self.states.STARTING_ROW
 	end
 	return false
+end
+
+function AITurn:getTurnNode()
+	if SpecializationUtil.hasSpecialization(ArticulatedAxis, self.vehicle.specializations) and self.vehicle.spec_articulatedAxis.rotationNode then
+		return self.vehicle.spec_articulatedAxis.rotationNode
+	else
+		return self.driver:getDirectionNode()
+	end
 end
 
 --[[
@@ -154,18 +162,21 @@ function KTurn:turn(dt)
 	-- AI driver's state remains TURNING and thus calls AITurn:drive() which wil take care of raising the implements
 	local endTurn = function()
 		self.state = self.states.ENDING_TURN
-		local endingTurnCourse = self.turnContext:createEndingTurnCourse(self.vehicle)
+		local endingTurnCourse = self.turnContext:createEndingTurnCourseWithAlignment(self.vehicle)
+		if not endingTurnCourse then
+			endingTurnCourse = self.turnContext:createEndingTurnCourse(self.vehicle)
+		end
 		self.driver:startFieldworkCourseWithTemporaryCourse(endingTurnCourse, self.turnContext.turnEndWpIx)
 	end
 
-	local dx, _, dz = self.turnContext:getLocalPositionFromTurnEnd(self.driver:getDirectionNode())
+	local dx, _, dz = self.turnContext:getLocalPositionFromTurnEnd(self:getTurnNode())
 	local turnRadius = self.vehicle.cp.turnDiameter / 2
 	if self.state == self.states.FORWARD then
 		self:setForwardSpeed()
 		if dz > 0 then
 			-- drive straight until we are beyond the turn end
 			self.driver:driveVehicleBySteeringAngle(dt, true, 0, self.turnContext:isLeftTurn(), self.driver:getSpeed())
-		elseif not self.turnContext:isDirectionPerpendicularToTurnEndDirection(self.driver:getDirectionNode()) then
+		elseif not self.turnContext:isDirectionPerpendicularToTurnEndDirection(self:getTurnNode()) then
 			-- full turn towards the turn end waypoint
 			self.driver:driveVehicleBySteeringAngle(dt, true, 1, self.turnContext:isLeftTurn(), self.driver:getSpeed())
 		else
@@ -184,14 +195,15 @@ function KTurn:turn(dt)
 	elseif self.state == self.states.REVERSE then
 		self:setReverseSpeed()
 		self.driver:driveVehicleBySteeringAngle(dt, false, 0, self.turnContext:isLeftTurn(), self.driver:getSpeed())
-		if math.abs(dx) > turnRadius * 1.05 then
+		if self.turnContext:isLateralDistanceGreater(dx, turnRadius * 1.05) then
 			self:debug('K Turn forwarding again')
-			self.state = self.states.FORWARD_ARC
+			--self.state = self.states.FORWARD_ARC
+			endTurn()
 		end
 	elseif self.state == self.states.FORWARD_ARC then
 		self:setForwardSpeed()
 		self.driver:driveVehicleBySteeringAngle(dt, true, 1, self.turnContext:isLeftTurn(), self.driver:getSpeed())
-		if self.turnContext:isDirectionCloseToEndDirection(self.driver:getDirectionNode(), 75) then
+		if self.turnContext:isDirectionCloseToEndDirection(self:getTurnNode(), 75) then
 			self:debug('K Turn ending turn')
 			endTurn()
 		end
@@ -229,8 +241,8 @@ function CombineHeadlandTurn:startTurn()
 end
 
 function CombineHeadlandTurn:turn(dt)
-	local dx, _, dz = self.turnContext:getLocalPositionFromTurnEnd(self.driver:getDirectionNode())
-	local angleToTurnEnd = math.abs(self.turnContext:getAngleToTurnEndDirection(self.driver:getDirectionNode()))
+	local dx, _, dz = self.turnContext:getLocalPositionFromTurnEnd(self:getTurnNode())
+	local angleToTurnEnd = math.abs(self.turnContext:getAngleToTurnEndDirection(self:getTurnNode()))
 
 	if self.state == self.states.FORWARD then
 		self:setForwardSpeed()
@@ -254,7 +266,7 @@ function CombineHeadlandTurn:turn(dt)
 	elseif self.state == self.states.REVERSE_ARC then
 		self:setReverseSpeed()
 		self.driver:driveVehicleBySteeringAngle(dt, false, 1, self.turnContext:isLeftTurn(), self.driver:getSpeed())
-		--if self.turnContext:isPointingToTurnEnd(self.driver:getDirectionNode(), 5)  then
+		--if self.turnContext:isPointingToTurnEnd(self:getTurnNode(), 5)  then
 		if angleToTurnEnd < math.rad(20) then
 			self:debug('Combine headland turn forwarding again')
 			self.state = self.states.ENDING_TURN

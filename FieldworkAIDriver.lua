@@ -1160,6 +1160,9 @@ function FieldworkAIDriver:onDraw()
 			end
 			DebugUtil.drawDebugNode(object.cp.DirectionNode or object.rootNode, object:getName() .. ' root')
 		end
+		if object.spec_articulatedAxis and object.spec_articulatedAxis.rotationNode then
+			DebugUtil.drawDebugNode(object.spec_articulatedAxis.rotationNode, object:getName() .. ' rotationNode')
+		end
 	end
 
 	showAIMarkersOfObject(self.vehicle)

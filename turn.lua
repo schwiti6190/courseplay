@@ -2148,7 +2148,7 @@ function courseplay:getAlignWpsToTargetWaypoint( vehicle, vx, vz, tx, tz, tDirec
 	local leftOrRight = dx < 0 and -1 or 1
 	-- center of turn circle. Also, move it back a meter so the alignment course ends up 
 	-- a bit further back from the waypoint to prevent circling
-	local c1x, _, c1z = localToWorld( wpNode, leftOrRight * turnRadius, 0, -1 )
+	local c1x, _, c1z = localToWorld( wpNode, leftOrRight * turnRadius, 0, 0 )
 	local vehicleToC1Distance = courseplay:distance( vx, vz, c1x, c1z )
 	local vehicleToC1Direction = math.atan2(c1x - vx, c1z - vz )
 	local angleBetweenTangentAndC1 = math.pi / 2 - math.asin( turnRadius / vehicleToC1Distance )
@@ -2665,12 +2665,25 @@ end
 function TurnContext:createEndingTurnCourse(vehicle)
 	local waypoints = {}
 	-- make sure course reaches the front marker node so end it 1m behind that node
-	for d = -10, 1, 1 do
+	for d = -10, 3, 1 do
 		local x, _, z = localToWorld(self.frontMarkerNode, 0, 0, d)
 		table.insert(waypoints, {x = x, z = z})
 	end
 	return Course(vehicle,waypoints, true)
 end
 
--- do not delete this line
+function TurnContext:createEndingTurnCourseWithAlignment(vehicle)
+	local waypoints = {}
+
+	local x, _, z = localToWorld(self.frontMarkerNode, 0, 0, 0)
+	local vx, _, vz = getWorldTranslation(vehicle.cp.DirectionNode)
+	local alignmentWaypoints = courseplay:getAlignWpsToTargetWaypoint(vehicle, vx, vz, x, z, self.turnEndWp.angle, true)
+	if not alignmentWaypoints then
+		return nil
+	else
+		return Course(vehicle, alignmentWaypoints, true)
+	end
+end
+
+	-- do not delete this line
 -- vim: set noexpandtab:
