@@ -97,7 +97,7 @@ end
 -- for example, io.flush is not available from within the game.
 --
 function courseGenerator.isRunningInGame()
-	return courseplay ~= nil;
+	return g_currentMission ~= nil;
 end
 
 function courseGenerator.getCurrentTime()
