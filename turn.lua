@@ -306,7 +306,8 @@ function courseplay:turn(vehicle, dt, turnContext)
 					if abs(turnInfo.targetDeltaX) >= (turnInfo.turnDiameter * 2) and abs(turnInfo.targetDeltaZ) >= (turnInfo.turnRadius * 3) then
 						courseplay:generateTurnTypeWideTurnWithAvoidance(vehicle, turnInfo);
 					else
-						courseplay:generateTurnTypeWideTurn(vehicle, turnInfo);
+						--courseplay:generateTurnTypeWideTurn(vehicle, turnInfo);
+						courseplay:generateTurnTypeWideTurnDubins(vehicle, turnContext);
 					end;
 					----------------------------------------------------------
 					-- NAROW TURNS (Turns where the distance to next lane is smaller than the turning Diameter)
@@ -814,6 +815,10 @@ function courseplay.driveToPoint(self, dt, acceleration, allowedToDrive, moveFor
 		end
 		WheelsUtil.updateWheelsPhysics(self, dt, self.lastSpeedReal*self.movingDirection, acceleration, not allowedToDrive, true)
 	end
+end
+
+function courseplay:generateTurnTypeWideTurnDubins(vehicle, turnContext)
+	courseGenerator.findDubinsPath(vehicle.rootNode, turnContext.frontMarkerNode)
 end
 
 function courseplay:generateTurnTypeWideTurn(vehicle, turnInfo)

@@ -19,6 +19,16 @@
 * OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN
 * THE SOFTWARE.
 */
+
+This is the lua port of the original C implementation by Peter Vaiko for Courseplay:
+
+@Misc{DubinsCurves,
+  author = {Andrew Walker},
+  title  = {Dubins-Curves: an open implementation of shortest paths for the forward only car},
+  year   = {2008--},
+  url    = "https://github.com/AndrewWalker/Dubins-Curves"
+}
+
 ]]--
 
 -- Dubins words (path types, Left/Straight/Right
@@ -45,10 +55,10 @@ end
 
 function dubins_path(path, q0, q1, rho, pathType)
     local errcode
-    local intermediateResults = dubins_intermediate_results(q0, q1, rho)
-    if intermediateResults then
+    local ir = dubins_intermediate_results(q0, q1, rho)
+    if ir then
         local params = {}
-        errcode = DubinsPathTypeFunctions[pathType](intermediateResults, params)
+        errcode = DubinsPathTypeFunctions[pathType](ir, params)
         if errcode == EDUBOK then
             path.param[1] = params[1]
             path.param[2] = params[2]
@@ -153,7 +163,7 @@ function dubins_path_sample_many(path, stepSize)
 end
 
 function dubins_intermediate_results(q0, q1, rho)
-    local intermediateResults = {}
+    local ir = {}
     local dx, dy, D, d, theta, alpha, beta
     if rho <= 0.0 then
         return
@@ -171,76 +181,76 @@ function dubins_intermediate_results(q0, q1, rho)
     alpha = mod2pi(q0.t - theta)
     beta  = mod2pi(q1.t - theta)
 
-    intermediateResults.alpha = alpha
-    intermediateResults.beta  = beta
-    intermediateResults.d     = d
-    intermediateResults.sa    = math.sin(alpha)
-    intermediateResults.sb    = math.sin(beta)
-    intermediateResults.ca    = math.cos(alpha)
-    intermediateResults.cb    = math.cos(beta)
-    intermediateResults.c_ab  = math.cos(alpha - beta)
-    intermediateResults.d_sq  = d * d
+    ir.alpha = alpha
+    ir.beta  = beta
+    ir.d     = d
+    ir.sa    = math.sin(alpha)
+    ir.sb    = math.sin(beta)
+    ir.ca    = math.cos(alpha)
+    ir.cb    = math.cos(beta)
+    ir.c_ab  = math.cos(alpha - beta)
+    ir.d_sq  = d * d
 
-    return intermediateResults
+    return ir
 end
 
-function dubins_LSL(intermediateResults)
+function dubins_LSL(ir)
     local tmp0, tmp1, p_sq
 
-    tmp0 = intermediateResults.d + intermediateResults.sa - intermediateResults.sb
-    p_sq = 2 + intermediateResults.d_sq - (2*intermediateResults.c_ab) + (2 * intermediateResults.d * (intermediateResults.sa - intermediateResults.sb))
+    tmp0 = ir.d + ir.sa - ir.sb
+    p_sq = 2 + ir.d_sq - (2*ir.c_ab) + (2 * ir.d * (ir.sa - ir.sb))
 
     if p_sq >= 0 then
-        tmp1 = math.atan2( (intermediateResults.cb - intermediateResults.ca), tmp0 )
-        return mod2pi(tmp1 - intermediateResults.alpha), math.sqrt(p_sq), mod2pi(intermediateResults.beta - tmp1), "LSL"
+        tmp1 = math.atan2( (ir.cb - ir.ca), tmp0 )
+        return mod2pi(tmp1 - ir.alpha), math.sqrt(p_sq), mod2pi(ir.beta - tmp1), "LSL"
     end
 end
 
 
-function dubins_RSR(intermediateResults)
-    local tmp0 = intermediateResults.d - intermediateResults.sa + intermediateResults.sb
-    local p_sq = 2 + intermediateResults.d_sq - (2 * intermediateResults.c_ab) + (2 * intermediateResults.d * (intermediateResults.sb - intermediateResults.sa))
+function dubins_RSR(ir)
+    local tmp0 = ir.d - ir.sa + ir.sb
+    local p_sq = 2 + ir.d_sq - (2 * ir.c_ab) + (2 * ir.d * (ir.sb - ir.sa))
     if p_sq >= 0 then
-        local tmp1 = math.atan2( (intermediateResults.ca - intermediateResults.cb), tmp0 )
-        return mod2pi(intermediateResults.alpha - tmp1), math.sqrt(p_sq), mod2pi(tmp1 -intermediateResults.beta), "RSR"
+        local tmp1 = math.atan2( (ir.ca - ir.cb), tmp0 )
+        return mod2pi(ir.alpha - tmp1), math.sqrt(p_sq), mod2pi(tmp1 -ir.beta), "RSR"
     end
 end 
 
-function dubins_LSR(intermediateResults)
-    local p_sq = -2 + (intermediateResults.d_sq) + (2 * intermediateResults.c_ab) + (2 * intermediateResults.d * (intermediateResults.sa + intermediateResults.sb))
+function dubins_LSR(ir)
+    local p_sq = -2 + (ir.d_sq) + (2 * ir.c_ab) + (2 * ir.d * (ir.sa + ir.sb))
     if p_sq >= 0 then
         local p = math.sqrt(p_sq)
-        local tmp0 = math.atan2( (-intermediateResults.ca - intermediateResults.cb), (intermediateResults.d + intermediateResults.sa + intermediateResults.sb) ) - math.atan2(-2.0, p)
-        return mod2pi(tmp0 - intermediateResults.alpha), p, mod2pi(tmp0 - mod2pi(intermediateResults.beta)), "LSR"
+        local tmp0 = math.atan2( (-ir.ca - ir.cb), (ir.d + ir.sa + ir.sb) ) - math.atan2(-2.0, p)
+        return mod2pi(tmp0 - ir.alpha), p, mod2pi(tmp0 - mod2pi(ir.beta)), "LSR"
     end
 end
 
-function dubins_RSL(intermediateResults)
-    local p_sq = -2 + intermediateResults.d_sq + (2 * intermediateResults.c_ab) - (2 * intermediateResults.d * (intermediateResults.sa + intermediateResults.sb))
+function dubins_RSL(ir)
+    local p_sq = -2 + ir.d_sq + (2 * ir.c_ab) - (2 * ir.d * (ir.sa + ir.sb))
     if p_sq >= 0 then
         local p = math.sqrt(p_sq)
-        local tmp0 = math.atan2( (intermediateResults.ca + intermediateResults.cb), (intermediateResults.d - intermediateResults.sa - intermediateResults.sb) ) - math.atan2(2.0, p)
-        return mod2pi(intermediateResults.alpha - tmp0), p, mod2pi(intermediateResults.beta - tmp0), 'RSL'
+        local tmp0 = math.atan2( (ir.ca + ir.cb), (ir.d - ir.sa - ir.sb) ) - math.atan2(2.0, p)
+        return mod2pi(ir.alpha - tmp0), p, mod2pi(ir.beta - tmp0), 'RSL'
     end
 end
 
-function dubins_RLR(intermediateResults)
-    local tmp0 = (6. - intermediateResults.d_sq + 2*intermediateResults.c_ab + 2*intermediateResults.d*(intermediateResults.sa - intermediateResults.sb)) / 8.
-    local phi  = math.atan2( intermediateResults.ca - intermediateResults.cb, intermediateResults.d - intermediateResults.sa + intermediateResults.sb )
+function dubins_RLR(ir)
+    local tmp0 = (6. - ir.d_sq + 2*ir.c_ab + 2*ir.d*(ir.sa - ir.sb)) / 8.
+    local phi  = math.atan2( ir.ca - ir.cb, ir.d - ir.sa + ir.sb )
     if math.abs(tmp0) <= 1 then
         local p = mod2pi((2*math.pi) - math.acos(tmp0) )
-        local t = mod2pi(intermediateResults.alpha - phi + mod2pi(p/2.))
-        return t, p, mod2pi(intermediateResults.alpha - intermediateResults.beta - t + mod2pi(p)), "RLR"
+        local t = mod2pi(ir.alpha - phi + mod2pi(p/2.))
+        return t, p, mod2pi(ir.alpha - ir.beta - t + mod2pi(p)), "RLR"
     end
 end
 
-function dubins_LRL(intermediateResults)
-    local tmp0 = (6. - intermediateResults.d_sq + 2*intermediateResults.c_ab + 2*intermediateResults.d*(intermediateResults.sb - intermediateResults.sa)) / 8.
-    local phi = math.atan2( intermediateResults.ca - intermediateResults.cb, intermediateResults.d + intermediateResults.sa - intermediateResults.sb )
+function dubins_LRL(ir)
+    local tmp0 = (6. - ir.d_sq + 2*ir.c_ab + 2*ir.d*(ir.sb - ir.sa)) / 8.
+    local phi = math.atan2( ir.ca - ir.cb, ir.d + ir.sa - ir.sb )
     if math.abs(tmp0) <= 1 then
         local p = mod2pi( 2*math.pi - math.acos( tmp0) )
-        local t = mod2pi(-intermediateResults.alpha - phi + p/2.)
-        return t, p, mod2pi(mod2pi(intermediateResults.beta) - intermediateResults.alpha -t + mod2pi(p)), "LRL"
+        local t = mod2pi(-ir.alpha - phi + p/2.)
+        return t, p, mod2pi(mod2pi(ir.beta) - ir.alpha -t + mod2pi(p)), "LRL"
     end
 end
 
@@ -255,13 +265,13 @@ local DubinsPathTypeFunctions = {
 
 function dubins_shortest_path(q0, q1, rho)
     local path = {}
-    local intermediateResults = {}
+    local ir = {}
     local params = {}
     local cost
     local best_cost = math.huge
     local best_word = -1
-    intermediateResults = dubins_intermediate_results(q0, q1, rho)
-    if not intermediateResults then
+    ir = dubins_intermediate_results(q0, q1, rho)
+    if not ir then
         return
     end
 
@@ -275,7 +285,7 @@ function dubins_shortest_path(q0, q1, rho)
     local pathType
 
     for _, dubins_path_type_function in pairs(DubinsPathTypeFunctions) do
-        params[1], params[2], params[3], pathType = dubins_path_type_function(intermediateResults, params)
+        params[1], params[2], params[3], pathType = dubins_path_type_function(ir, params)
         if params[1] then
             cost = params[1] + params[2] + params[3]
             if cost < best_cost then

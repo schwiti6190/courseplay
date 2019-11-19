@@ -153,6 +153,14 @@ function courseGenerator.toCpAngle( angle )
 	return a
 end
 
+--- Convert the Courseplay angle to the Cartesian representation
+function courseGenerator.fromCpAngle(angleDeg)
+	local a = angleDeg - 90
+	if a < 0 then
+		a = 360 - a
+	end
+	return math.rad(a)
+end
 
 --- Pathfinder wrapper for CP 
 -- Expects FS coordinates (x,-z)
@@ -207,3 +215,28 @@ function courseGenerator.getCompassAngleDeg( gameAngleDeg )
 	return ( 360 + gameAngleDeg - 90 ) % 360
 end
 
+local function xzToXy(point)
+	point.y, point.z = -point.z, point.y or 0
+end
+
+local function xyToXz(point)
+	point.y, point.z = point.z or 0, -point.y
+end
+
+function courseGenerator.findDubinsPath(startNode, goalNode, turnRadius)
+	local vx, _, vz = getWorldTranslation(vehicle.rootNode)
+	local _, yRot, _ = gelWorldRotation(vehicle.rootNode)
+	local start = State3D(vx, vz, courseGenerator.fromCpAngle(math.deg(yRot)))
+	local tx, _, tz = getWorldTranslation(turnContext.frontMarkerNode)
+	local goal = State3D(tx, tz, courseGenerator.fromCpAngle(turnContext.turnEndWp.angle))
+	xzToXy(start)
+	xzToXy(goal)
+	local path = dubins_shortest_path(start, goal, turnRadius)
+	local dubinsPath = dubins_path_sample_many(path, 1)
+	if dubinsPath then
+		for i in 1, #dubinsPath do
+			xyToXz(dubinsPath[i])
+		end
+	end
+	return dubinsPath
+end
