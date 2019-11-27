@@ -1,4 +1,22 @@
+--[[
+This file is part of Courseplay (https://github.com/Courseplay/courseplay)
+Copyright (C) 2019 Peter Vaiko
 
+This program is free software: you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+This program is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with this program.  If not, see <http://www.gnu.org/licenses/>.
+]]
+
+--- A node in a 3D state space
 ---@class State3D
 State3D = CpObject()
 
@@ -13,7 +31,7 @@ function State3D:init(x, y, t, g, pred, motionPrimitive)
     self.y = y
     self.t = self:normalizeHeadingRad(t)
     self.pred = pred
-    self.g = g
+    self.g = g or 0
     self.h = 0
     self.cost = 0
     self.goal = false
@@ -21,20 +39,29 @@ function State3D:init(x, y, t, g, pred, motionPrimitive)
     self.open = false
     self.closed = false
     self.motionPrimitive = motionPrimitive
+    -- penalty for using this node, to avoid obstacles, stay in an area, etc.
+    self.nodePenalty = 0
 end
+
+function State3D:copy(other)
+    self.x = other.x
+    self.y = other.y
+    self.t = other.t
+    self.pred = other.pred
+    self.g = other.g
+    self.h = other.h
+    self.cost = other.cost
+    self.goal = other.goal
+    self.onOpenList = other.onOpenList
+    self.closed = other.closed
+    self.motionPrimitive = other.motionPrimitive
+    self.nodePenalty = 0
+end
+
 
 --- Comparision for the binary heap to find the node with the lowest cost
 function State3D:lt(other)
     return self.cost < other.cost
-end
-
---- Mark this node as the goal
-function State3D:setGoal()
-    self.goal = true
-end
-
-function State3D:isGoal()
-    return self.goal
 end
 
 function State3D:close()
@@ -51,9 +78,22 @@ function State3D:insert(openList)
     self.closed = false
     if not self.onOpenList then
         self.onOpenList = true
-        openList:insert(self)
+        openList:insert(self, self)
     end
 end
+
+function State3D:update(openList)
+    if self.onOpenList then
+        openList:update(self, self)
+    end
+end
+
+function State3D:remove(openList)
+    if self.onOpenList then
+        openList:remove(self)
+    end
+end
+
 
 function State3D:isClosed()
     return self.closed
@@ -62,27 +102,32 @@ end
 function State3D:equals(other, deltaPos, deltaTheta)
     return math.abs(self.x - other.x ) < deltaPos and
             math.abs(self.y - other.y ) < deltaPos and
-            math.abs(self.t - other.t) < deltaTheta
+            (math.abs(self.t - other.t) < deltaTheta or
+            math.abs(self.t - other.t) > 2 * math.pi - deltaTheta)
 end
 
 function State3D:updateG(primitive)
     local penalty = 1
-    local reverseAffinity = 2
+    local reversePenalty = 2
     if self.pred and self.pred.motionPrimitive then
         -- penalize turning
-        if primitive.type ~= self.pred.motionPrimitive.type then
+        if HybridAStar.MotionPrimitives.isTurn(primitive, self.pred.motionPrimitive) then
             penalty = penalty * 1.05
         end
         -- penalize direction change
         if not HybridAStar.MotionPrimitives.isSameDirection(primitive, self.pred.motionPrimitive) then
-            penalty = penalty * reverseAffinity * 2
+            penalty = penalty * reversePenalty * 2
         end
         -- penalize reverse driving
         if HybridAStar.MotionPrimitives.isReverse(primitive) then
-            penalty = penalty * reverseAffinity
+            penalty = penalty * reversePenalty
         end
     end
     self.g = self.g + penalty * primitive.d
+end
+
+function State3D:setNodePenalty(nodePenalty)
+    self.nodePenalty = nodePenalty
 end
 
 ---@param node State3D
@@ -91,14 +136,14 @@ function State3D:updateH(goal)
     local dx = goal.x - self.x
     local dy = goal.y - self.y
     self.h = math.sqrt(dx * dx + dy * dy)
-    self.cost = self.g + self.h
+    self.cost = self.g + self.h + self.nodePenalty
 end
+
 
 ---@param node State3D
 function State3D:updateHWithDubins(goal, turnRadius)
     local dubinsPath = dubins_shortest_path(self, goal, turnRadius)
     local dubinsPathLength = dubins_path_length(dubinsPath)
-    --print(self.h, dubinsPathLength)
     self.h = math.max(dubinsPathLength, self.h)
     self.cost = self.g + self.h
 end
@@ -108,6 +153,10 @@ function State3D:getCost()
 end
 
 function State3D:normalizeHeadingRad(t)
+
+    -- we seem to have some floating point glitches around 0, e.g. negative small numbers are converted to 360 degrees
+    -- instead of 359.999... Then the algorithm won't find the goal in the 3D space as t should be < 360
+--    if math.abs(t) < 1e-5 then t = 0 end
     t = t % (2 * math.pi)
     if t < 0 then
         return 2 * math.pi - t
@@ -126,7 +175,8 @@ end
 function State3D:__tostring()
     local result
     local type = self.motionPrimitive and tostring(self.motionPrimitive.type) or 'nil'
-    result = string.format('x: %.2f y:%.2f t:%d type:%s cost:%.1f closed:%s open:%s', self.x, self.y, math.deg(self.t),
-            type, self.cost, tostring(self.closed), tostring(self.open))
+    local pred = self.pred and self.pred.motionPrimitive and self.pred.motionPrimitive.type or 'nil'
+    result = string.format('x: %.2f y:%.2f t:%d type:%s g:%.2f h:%.2f c:%.2f closed:%s open:%s, pred = %s', self.x, self.y, math.deg(self.t),
+                type, self.g, self.h, self.cost, tostring(self.closed), tostring(self.onOpenList), pred)
     return result
 end
