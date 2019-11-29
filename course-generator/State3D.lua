@@ -44,18 +44,14 @@ function State3D:init(x, y, t, g, pred, motionPrimitive)
 end
 
 function State3D:copy(other)
-    self.x = other.x
-    self.y = other.y
-    self.t = other.t
-    self.pred = other.pred
-    self.g = other.g
-    self.h = other.h
-    self.cost = other.cost
-    self.goal = other.goal
-    self.onOpenList = other.onOpenList
-    self.closed = other.closed
-    self.motionPrimitive = other.motionPrimitive
-    self.nodePenalty = 0
+    local this = State3D(other.x, other.y, other.t, other.g, other.pred, other.motionPrimitive)
+    this.h = other.h
+    this.cost = other.cost
+    this.goal = other.goal
+    this.onOpenList = other.onOpenList
+    this.closed = other.closed
+    this.nodePenalty = other.nodePenalty
+    return this
 end
 
 
@@ -152,11 +148,12 @@ function State3D:getCost()
     return self.cost
 end
 
-function State3D:normalizeHeadingRad(t)
+--- Make a 180 turn
+function State3D:reverseHeading()
+    self.t = self:normalizeHeadingRad(self.t + math.pi)
+end
 
-    -- we seem to have some floating point glitches around 0, e.g. negative small numbers are converted to 360 degrees
-    -- instead of 359.999... Then the algorithm won't find the goal in the 3D space as t should be < 360
---    if math.abs(t) < 1e-5 then t = 0 end
+function State3D:normalizeHeadingRad(t)
     t = t % (2 * math.pi)
     if t < 0 then
         return 2 * math.pi - t

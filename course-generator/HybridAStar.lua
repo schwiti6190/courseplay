@@ -262,7 +262,7 @@ function HybridAStar:findPath(start, goal, turnRadius, allowReverse, getNodePena
 		end
 
 		self.count = self.count + 1
-		if self.finder and self.count % 500 == 0 then
+		if coroutine.running() and self.count % 500 == 0 then
 			self.yields = self.yields + 1
 			coroutine.yield(false)
 		end
@@ -316,7 +316,7 @@ function HybridAStar:findPath(start, goal, turnRadius, allowReverse, getNodePena
 		self.iterations = self.iterations + 1
 	end
 	self.path = {}
-	self:debug('No path found: iterations %d, expansions %d', self.iterations, self.expansions)
+	self:debug('No path found: iterations %d, yields %d', self.iterations, self.yields)
 	return true, nil
 end
 
@@ -326,7 +326,7 @@ function HybridAStar:rollUpPath(node, goal)
 	local currentNode = node
 	self:debug('Goal node at %.2f/%.2f, cost %.1f (%.1f - %.1f)', goal.x, goal.y, node.cost,
 			self.nodes.lowestCost, self.nodes.highestCost)
-	self:debug('Iterations %d, expansions %d', self.iterations, self.expansions)
+	self:debug('Iterations %d, yields %d', self.iterations, self.yields)
 	table.insert(self.path, 1, goal)
 	while currentNode.pred and #self.path < 1000 and currentNode ~= currentNode.pred do
 		table.insert(self.path, 1, currentNode.pred)
@@ -373,7 +373,8 @@ function HybridAStarWithAStarInTheMiddle:start(start, goal, turnRadius, allowRev
 	self.hybridAStarPathFinder = HybridAStar()
 	self.aStarPathFinder = Pathfinder()
 	self.retries = 0
-	self.startNode, self.goalNode, self.turnRadius, self.withReverse = start, goal, turnRadius, allowReverse
+	self.startNode, self.goalNode = State3D:copy(start), State3D:copy(goal)
+	self.turnRadius, self.withReverse = turnRadius, allowReverse
 	self.fieldPolygon, self.getNodePenaltyFunc = fieldPolygon, getNodePenaltyFunc
 	self.hybridRange = self.hybridRange and self.hybridRange or turnRadius * 3
 	-- how far is start/goal apart?
@@ -383,7 +384,11 @@ function HybridAStarWithAStarInTheMiddle:start(start, goal, turnRadius, allowRev
 		self.phase = self.ALL_HYBRID
 		self.coroutine = coroutine.create(self.hybridAStarPathFinder.findPath)
 		self.currentPathFinder = self.hybridAStarPathFinder
-		return self:resume(start, goal, turnRadius, allowReverse, getNodePenaltyFunc)
+		-- swap start and goal as the path will always start exactly at the start point but will only approximatly end
+		-- at the goal. Here we want to end up exactly on the goal point
+		self.startNode:reverseHeading()
+		self.goalNode:reverseHeading()
+		return self:resume(self.goalNode, self.startNode, turnRadius, allowReverse, getNodePenaltyFunc)
 	else
 		self.phase = self.MIDDLE
 		self.coroutine = coroutine.create(self.aStarPathFinder.run)
@@ -396,6 +401,7 @@ function HybridAStarWithAStarInTheMiddle:start(start, goal, turnRadius, allowRev
 	return self:resume()
 end
 
+--- The resume() of this pathfinder is more complicated as it handles essentially three separate pathfinding runs
 function HybridAStarWithAStarInTheMiddle:resume(...)
 	local ok, done, path = coroutine.resume(self.coroutine, self.currentPathFinder, ...)
 	if not ok then
@@ -408,6 +414,10 @@ function HybridAStarWithAStarInTheMiddle:resume(...)
 		self.nodes = self.hybridAStarPathFinder.nodes
 		if self.phase == self.ALL_HYBRID then
 			-- start and node near, just one phase, all hybrid, we are done
+			-- remove last waypoint as it is the approximate goal point and may not be aligned
+			table.remove(path)
+			-- since we generated a path from the goal -> start we now have to reverse it
+			table.reverse(path)
 			return true, path
 		elseif self.phase == self.MIDDLE then
 			if not path then return true, nil end
@@ -420,13 +430,12 @@ function HybridAStarWithAStarInTheMiddle:resume(...)
 			self.coroutine = coroutine.create(self.hybridAStarPathFinder.findPath)
 			self.currentPathFinder = self.hybridAStarPathFinder
 			local goal = State3D(self.middlePath[1].x, self.middlePath[1].y, self.middlePath[1].nextEdge.angle)
-			local x, y, t = HybridAStar.NodeList(1, 5):getNodeIndexes(goal)
 			return self:resume(self.startNode, goal, self.turnRadius, self.allowReverse, self.getNodePenaltyFunc)
 		elseif self.phase == self.START_TO_MIDDLE then
 			-- start and middle sections ready
 			self.path = Polygon:new(path)
 			-- append middle to start
-			-- but remove last point from start as it ovlerlaps with the first in the middle
+			-- but remove last point from start as it overlaps with the first in the middle
 			table.remove(self.path)
 			for _, n in ipairs(self.middlePath) do
 				table.insert(self.path, n)
@@ -436,9 +445,12 @@ function HybridAStarWithAStarInTheMiddle:resume(...)
 			return self:startMiddleToEnd()
 		else
 			if path then
+				-- last piece is ready, this was generated from the goal point to the end of the middle section so
+				-- first remove the last point of the middle section to make the transition smoother
 				table.remove(self.path)
-				for _, n in ipairs(path) do
-					table.insert(self.path, n)
+				-- and then add the last section in reverse order
+				for i = #path, 2, -1 do
+					table.insert(self.path, path[i])
 				end
 				self.path:calculateData()
 			end
@@ -452,6 +464,9 @@ function HybridAStarWithAStarInTheMiddle:startMiddleToEnd()
 	self.phase = self.MIDDLE_TO_END
 	self.coroutine = coroutine.create(self.hybridAStarPathFinder.findPath)
 	self.currentPathFinder = self.hybridAStarPathFinder
-	local start = State3D(self.middlePath[#self.middlePath].x, self.middlePath[#self.middlePath].y, self.middlePath[#self.middlePath].prevEdge.angle)
-	return self:resume(start, self.goalNode, self.turnRadius, self.allowReverse, self.getNodePenaltyFunc)
+	-- swap start and goal as the path will always start exactly at the start point but will only approximatly end
+	-- at the goal. Here we want to end up exactly on the goal point
+	local start = State3D(self.middlePath[#self.middlePath].x, self.middlePath[#self.middlePath].y, reverseAngle(self.middlePath[#self.middlePath].prevEdge.angle))
+	self.goalNode:reverseHeading()
+	return self:resume(self.goalNode, start, self.turnRadius, self.allowReverse, self.getNodePenaltyFunc)
 end

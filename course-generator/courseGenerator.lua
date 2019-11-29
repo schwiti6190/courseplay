@@ -157,7 +157,7 @@ end
 function courseGenerator.fromCpAngle(angleDeg)
 	local a = angleDeg - 90
 	if a < 0 then
-		a = 360 - a
+		a = 360 + a
 	end
 	return math.rad(a)
 end

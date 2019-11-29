@@ -287,6 +287,7 @@ function CpManager:update(dt)
 		courseplay.fields.filter = DensityMapFilter:new(courseplay.fields.modifier) -- filter on terrain type
 		courseplay.fields.filter:setValueCompareParams("greater", 0) -- more than 0, so it is a field
 	end
+	g_devHelper:update()
 end;
 
 function CpManager:draw()
@@ -315,6 +316,8 @@ function CpManager:draw()
 	if courseplay.fields.fieldDefinitionBase and courseplay.globalSettings.autoFieldScan:is(true) and not courseplay.fields.allFieldsScanned and self.startFieldScanAfter <= 0 then
 		self:renderFieldScanInfo();
 	end;
+
+	g_devHelper:draw()
 end;
 
 function CpManager:mouseEvent(posX, posY, isDown, isUp, mouseKey)
@@ -379,10 +382,12 @@ function CpManager:mouseEvent(posX, posY, isDown, isUp, mouseKey)
 			end;
 		end;
 	end;
+	g_devHelper:mouseEvent(posX, posY, isDown, isUp, mouseKey)
 end;
 
 function CpManager:keyEvent(unicode, sym, modifier, isDown) 
 	courseplay:onKeyEvent(unicode, sym, modifier, isDown)
+	g_devHelper:keyEvent(unicode, sym, modifier, isDown)
 end;
 
 
@@ -593,6 +598,7 @@ function CpManager:getVariable(variableName)
 end
 
 function CpManager:loadFile(fileName)
+	fileName = fileName or 'reload.xml'
 	local path = courseplay.path .. fileName
 	if fileExists(path) then
 		g_xmlFile = loadXMLFile('loadFile', path)

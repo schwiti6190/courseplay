@@ -47,6 +47,7 @@ local sonOfaBangSonOfaBoom = {
 local function initialize()
 	local fileList = {
 		'CpObject',
+		'DevHelper',
 		'CpManager',
 		'base',
 		'button',
@@ -97,6 +98,7 @@ local function initialize()
 		'LevelCompactAIDriver',
 		'ShovelModeAIDriver',
 		'AITurn',
+		'course-generator/geo',
 		'course-generator/Pathfinder',
 		'course-generator/Island',
 		'course-generator/courseGenerator',
