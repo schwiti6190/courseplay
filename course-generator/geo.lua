@@ -1088,7 +1088,8 @@ function Polyline:shortenStart(d)
 	local to = #self
 	for i = 2, to do
 		dCut = dCut - self[1].nextEdge.length
-		if dCut < 0 then
+		-- check for something else than zero to make sure the new point does not overlap with the last we did not cut
+		if dCut < -0.1 then
 			local p = addPolarVectorToPoint(self[2], self[2].prevEdge.angle, dCut)
 			table.remove(self, 1)
 			table.insert(self, 1, p)

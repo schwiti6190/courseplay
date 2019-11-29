@@ -39,7 +39,7 @@ HybridAStar = CpObject(Pathfinder)
 ---@class HybridAstar.MotionPrimitives
 HybridAStar.MotionPrimitives = CpObject()
 -- forward straight/right/left
-HybridAStar.MotionPrimitiveTypes = {FS = 'FS', FR = 'FR', FL = 'FL', RS = 'RS', RR = 'RR', RL = 'RL', LL = 'LL', RR = 'RR'}
+HybridAStar.MotionPrimitiveTypes = {FS = 'FS', FR = 'FR', FL = 'FL', RS = 'RS', RR = 'RR', RL = 'RL', LL = 'LL', RR = 'RR', NA = 'NA'}
 
 ---@param r number turning radius
 ---@param expansionDegree number degrees of arc in one expansion step
@@ -96,41 +96,21 @@ end
 --- Motion primitives for a simple A Star algorithm
 HybridAStar.SimpleMotionPrimitives = CpObject(HybridAStar.MotionPrimitives)
 
+--- A simple set of motion primitives to use with an A start algorlithm, pointing to 10 directions
 ---@param gridSize number search grid size in meters
+HybridAStar.SimpleMotionPrimitives = CpObject(HybridAStar.MotionPrimitives)
 function HybridAStar.SimpleMotionPrimitives:init(gridSize, allowReverse)
 	local dx = gridSize
 	local dy = gridSize
 	local d = math.sqrt(dx * dx + dy * dy)
 	-- motion primitive table:
 	self.primitives = {}
-	-- forward right
-	table.insert(self.primitives, {dx = dx, dy = -dy, dt = 0, d = d,
-								   type = HybridAStar.MotionPrimitiveTypes.FR})
-	-- forward left
-	table.insert(self.primitives, {dx = dx, dy = dy, dt = 0, d = d,
-								   type = HybridAStar.MotionPrimitiveTypes.FL})
-	-- forward straight
-	table.insert(self.primitives, {dx = dx, dy = 0, dt = 0, d = dx,
-								   type = HybridAStar.MotionPrimitiveTypes.FS})
-	-- right
-	table.insert(self.primitives, {dx = 0, dy = -dy, dt = 0, d = dy,
-								   type = HybridAStar.MotionPrimitiveTypes.RR})
-	-- left
-	table.insert(self.primitives, {dx = 0, dy = dy, dt = 0, d = dy,
-								   type = HybridAStar.MotionPrimitiveTypes.LL})
-	if allowReverse then
-		-- reverse straight
-		table.insert(self.primitives, {dx = -dx, dy = 0, dt = 0, d = dx,
-									   type = HybridAStar.MotionPrimitiveTypes.RS})
-		-- reverse right
-		table.insert(self.primitives, {dx = -dx, dy = -dy, dt = 0, d = d,
-									   type = HybridAStar.MotionPrimitiveTypes.RR})
-		-- reverse left
-		table.insert(self.primitives, {dx = -dx, dy = dy, dt = 0, d = d,
-									   type = HybridAStar.MotionPrimitiveTypes.RL})
+	for angle = 0, 350, 10 do
+		dx = gridSize * math.cos(math.rad(angle))
+		dy = gridSize * math.sin(math.rad(angle))
+		table.insert(self.primitives, {dx = dx, dy = dy, dt = 0, d = gridSize, type = HybridAStar.MotionPrimitiveTypes.NA})
 	end
 end
-
 
 ---@class HybridAStar.NodeList
 HybridAStar.NodeList = CpObject()
@@ -225,6 +205,10 @@ function HybridAStar:run(...)
 	return self:findPath(...)
 end
 
+function HybridAStar:getMotionPrimitives(turnRadius, allowReverse)
+	return HybridAStar.MotionPrimitives(turnRadius, 6.75, allowReverse)
+end
+
 ---@param start State3D start node
 ---@param goal State3D goal node
 ---@param turnRadius number turn radius of the vehicle
@@ -232,8 +216,8 @@ end
 ---@param getNodePenaltyFunc function get penalty for a node, see getNodePenalty()
 function HybridAStar:findPath(start, goal, turnRadius, allowReverse, getNodePenaltyFunc)
 	if not getNodePenaltyFunc then getNodePenaltyFunc = self.getNodePenalty end
-	-- a motion primitive is straight or 10 degree turn to the right or left
-	local hybridMotionPrimitives = HybridAStar.MotionPrimitives(turnRadius, 6.75, allowReverse)
+	-- a motion primitive is straight or a few degree turn to the right or left
+	local hybridMotionPrimitives = self:getMotionPrimitives(turnRadius, allowReverse)
 
 	-- create the open list for the nodes as a binary heap where
 	-- the node with the lowest total cost is at the top
@@ -343,6 +327,20 @@ function HybridAStar:printOpenList(openList)
 	print('--- Open list end ----')
 end
 
+--- A simple A star implementation based on the hybrid A star. The difference is that the state space isn't really
+--- 3 dimensional as we do not take the heading into account and we use a differen set of motion primitives
+AStar = CpObject(HybridAStar)
+
+function AStar:init()
+	HybridAStar.init(self)
+	self.deltaPos = 4
+	self.deltaThetaDeg = 181
+end
+
+function AStar:getMotionPrimitives(turnRadius, allowReverse)
+	return HybridAStar.SimpleMotionPrimitives(self.deltaPos, allowReverse)
+end
+
 --- A pathfinder combining the (slow) hybrid A * and the (fast) regular A * star.
 --- Near the start and the goal the hybrid A * is used to ensure the generated path is drivable (direction changes 
 --- always obey the turn radius), but use the A * between the two.
@@ -371,7 +369,7 @@ end
 --- off-field locations and locations with fruit on the field.
 function HybridAStarWithAStarInTheMiddle:start(start, goal, turnRadius, allowReverse, fieldPolygon, getNodePenaltyFunc)
 	self.hybridAStarPathFinder = HybridAStar()
-	self.aStarPathFinder = Pathfinder()
+	self.aStarPathFinder = AStar()
 	self.retries = 0
 	self.startNode, self.goalNode = State3D:copy(start), State3D:copy(goal)
 	self.turnRadius, self.withReverse = turnRadius, allowReverse
@@ -393,12 +391,9 @@ function HybridAStarWithAStarInTheMiddle:start(start, goal, turnRadius, allowRev
 		self.phase = self.MIDDLE
 		self.coroutine = coroutine.create(self.aStarPathFinder.run)
 		self.currentPathFinder = self.aStarPathFinder
-		return self:resume(start, goal, fieldPolygon)
+		--return self:resume(start, goal, fieldPolygon)
+		return self:resume(start, goal, turnRadius, allowReverse)
 	end
-
-	if not self.coroutine then
-	end
-	return self:resume()
 end
 
 --- The resume() of this pathfinder is more complicated as it handles essentially three separate pathfinding runs
@@ -417,12 +412,13 @@ function HybridAStarWithAStarInTheMiddle:resume(...)
 			-- remove last waypoint as it is the approximate goal point and may not be aligned
 			table.remove(path)
 			-- since we generated a path from the goal -> start we now have to reverse it
-			table.reverse(path)
+			self:reverseTable(path)
 			return true, path
 		elseif self.phase == self.MIDDLE then
 			if not path then return true, nil end
 			-- middle part ready, now trim start and end to make room for the hybrid parts
-			self.middlePath = path
+			self.middlePath = Polyline:new(path)
+			self.middlePath:calculateData()
 			self.middlePath:shortenStart(self.hybridRange)
 			self.middlePath:shortenEnd(self.hybridRange)
 			self.phase = self.START_TO_MIDDLE
@@ -433,10 +429,10 @@ function HybridAStarWithAStarInTheMiddle:resume(...)
 			return self:resume(self.startNode, goal, self.turnRadius, self.allowReverse, self.getNodePenaltyFunc)
 		elseif self.phase == self.START_TO_MIDDLE then
 			-- start and middle sections ready
-			self.path = Polygon:new(path)
 			-- append middle to start
 			-- but remove last point from start as it overlaps with the first in the middle
-			table.remove(self.path)
+			table.remove(path)
+			self.path = Polygon:new(path)
 			for _, n in ipairs(self.middlePath) do
 				table.insert(self.path, n)
 			end
@@ -470,3 +466,15 @@ function HybridAStarWithAStarInTheMiddle:startMiddleToEnd()
 	self.goalNode:reverseHeading()
 	return self:resume(self.goalNode, start, self.turnRadius, self.allowReverse, self.getNodePenaltyFunc)
 end
+
+-- TODO: put this in a global lib, instead of helpers.lua as helpers.lua depends on courseplay.
+function HybridAStarWithAStarInTheMiddle:reverseTable(t)
+	local i, j = 1, #t
+
+	while i < j do
+		t[i], t[j] = t[j], t[i]
+
+		i = i + 1
+		j = j - 1
+	end
+end;

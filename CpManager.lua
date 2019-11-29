@@ -610,9 +610,9 @@ function CpManager:loadFile(fileName)
 		local f = getfenv(0).loadstring('setfenv(1, courseplay); ' .. code)
 		if f then
 			f()
-			return path .. ' loaded.'
+			return 'OK: ' .. path .. ' loaded.'
 		else
-			return path .. ' could not be compiled.'
+			return 'ERROR: ' .. path .. ' could not be compiled.'
 		end
 	end
 end
