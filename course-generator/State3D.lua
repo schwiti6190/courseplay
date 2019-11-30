@@ -102,7 +102,7 @@ function State3D:equals(other, deltaPos, deltaTheta)
             math.abs(self.t - other.t) > 2 * math.pi - deltaTheta)
 end
 
-function State3D:updateG(primitive)
+function State3D:updateG(primitive, userPenalty)
     local penalty = 1
     local reversePenalty = 2
     if self.pred and self.pred.motionPrimitive then
@@ -119,7 +119,7 @@ function State3D:updateG(primitive)
             penalty = penalty * reversePenalty
         end
     end
-    self.g = self.g + penalty * primitive.d
+    self.g = self.g + penalty * primitive.d + (userPenalty or 0)
 end
 
 function State3D:setNodePenalty(nodePenalty)
@@ -132,7 +132,7 @@ function State3D:updateH(goal)
     local dx = goal.x - self.x
     local dy = goal.y - self.y
     self.h = math.sqrt(dx * dx + dy * dy)
-    self.cost = self.g + self.h + self.nodePenalty
+    self.cost = self.g + self.h
 end
 
 

@@ -17,6 +17,10 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 ]]
 
 --- Development helper utilities to easily test and diagnose things.
+--- To test the pathfinding:
+--- 1. mark the start location/heading with Alt + <
+--- 2. mark the goal location/heading with Alt + >
+--- 3. watch the path generated ...
 DevHelper = CpObject()
 
 function DevHelper:init()
@@ -62,8 +66,7 @@ function DevHelper:keyEvent(unicode, sym, modifier, isDown)
         self.pathfinder = HybridAStarWithAStarInTheMiddle(20)
         self.goal = State3D(self.x, -self.z, courseGenerator.fromCpAngle(math.deg(self.yRot)))
         self:debug('Starting pathfinding between %s and %s', tostring(self.start), tostring(self.goal))
-        local done, path = self.pathfinder:start(self.start, self.goal, 5, false,
-                Polygon:new(courseGenerator.pointsToXy(courseplay.fields.fieldData[self.fieldNum].points)), DevHelper.getNodePenalty)
+        local done, path = self.pathfinder:start(self.start, self.goal, 5, false)
         if done then
             if path then
                 self:loadPath(path)
@@ -72,18 +75,6 @@ function DevHelper:keyEvent(unicode, sym, modifier, isDown)
             end
         end
     end
-end
-
----@param node State3D
-function DevHelper.getNodePenalty(node)
-    local penalty = 0
-    if not courseplay:isField(node.x, -node.y) then
-        penalty = penalty + 200
-    end
-    if courseplay:areaHasFruit( node.x, -node.y, nil, 1) then
-        penalty = penalty + 100
-    end
-    return penalty
 end
 
 function DevHelper:mouseEvent(posX, posY, isDown, isUp, mouseKey)

@@ -15,7 +15,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with this program.  If not, see <http://www.gnu.org/licenses/>.
 
-This implentation of the hybrid A* is based on Karl Kurzer's code and
+This implementation of the hybrid A* is based on Karl Kurzer's code and
 master thesis. See:
 
 https://github.com/karlkurzer/path_planner
@@ -30,8 +30,49 @@ https://github.com/karlkurzer/path_planner
 
 ]]
 
+--- Interface definition for all pathfinders
+---@class PathfinderInterface
+PathfinderInterface = CpObject()
+
+function PathfinderInterface:init()
+end
+
+--- Start a pathfinding. This is the interface to use if you want to run the pathfinding algorithm through
+-- multiple update loops so it does not block the game. This starts a coroutine and will periodically return control
+-- (yield).
+-- If you don't want to use coroutines and wait until the path is found, call findPath directly.
+--
+-- After start(), call resume() until it returns done == true.
+---@see PathfinderInterface#findPath also on how to use.
+function PathfinderInterface:start(...)
+	if not self.coroutine then
+		self.coroutine = coroutine.create(self.run)
+	end
+	return self:resume(...)
+end
+
+--- Is a pathfinding currently active?
+-- @return true if the pathfinding has started and not yet finished
+function PathfinderInterface:isActive()
+	return self.coroutine ~= nil
+end
+
+--- Resume the pathfinding
+---@return boolean true if the pathfinding is done, false if it isn't ready. In this case you'll have to call resume() again
+---@return Polyline path if the path found or nil if none found.
+-- @return array of the points of the grid used for the pathfinding, for test purposes only
+function PathfinderInterface:resume(...)
+	local ok, done, path, grid = coroutine.resume(self.coroutine, self, ...)
+	if not ok or done then
+		self.coroutine = nil
+		return true, path, grid
+	end
+	return false
+end
+
+
 ---@class HybridAStar
-HybridAStar = CpObject(Pathfinder)
+HybridAStar = CpObject(PathfinderInterface)
 
 --- Motion primitives for node expansions, contains the dx/dy/dt values for
 --- driving straight/right/left. The idea is to calculate these once as they are
@@ -198,11 +239,15 @@ end
 --- obstacle avoidance or forcing the search to remain in certain areas.
 ---@param node State3D
 function HybridAStar.getNodePenalty(node)
-	return 0
-end
-
-function HybridAStar:run(...)
-	return self:findPath(...)
+	if not courseGenerator.isRunningInGame() then return 0 end
+	local penalty = 0
+	if not courseplay:isField(node.x, -node.y) then
+		penalty = penalty + 100
+	end
+	if courseplay:areaHasFruit( node.x, -node.y, nil, 1) then
+		penalty = penalty + 200
+	end
+	return penalty
 end
 
 function HybridAStar:getMotionPrimitives(turnRadius, allowReverse)
@@ -246,6 +291,7 @@ function HybridAStar:findPath(start, goal, turnRadius, allowReverse, getNodePena
 		end
 
 		self.count = self.count + 1
+		-- yield only when we were started in a coroutine.
 		if coroutine.running() and self.count % 500 == 0 then
 			self.yields = self.yields + 1
 			coroutine.yield(false)
@@ -257,8 +303,7 @@ function HybridAStar:findPath(start, goal, turnRadius, allowReverse, getNodePena
 			for _, primitive in ipairs(hybridMotionPrimitives:getPrimitives()) do
 				---@type State3D
 				local succ = pred:createSuccessor(primitive)
-				succ:setNodePenalty(getNodePenaltyFunc(succ))
-				succ:updateG(primitive)
+				succ:updateG(primitive, getNodePenaltyFunc(succ))
 				succ:updateH(goal, turnRadius)
 				local existingSuccNode = self.nodes:get(succ)
 				if existingSuccNode then
@@ -347,7 +392,7 @@ end
 --- We'll run 3 pathfindings: one A * between start and goal (phase 1), then trim the ends of the result in hybridRange
 --- Now run a hybrid A * from the start to the beginning of the trimmed A * path (phase 2), then another hybrid A * from the
 --- end of the trimmed A * to the goal (phase 3).
-HybridAStarWithAStarInTheMiddle = CpObject(Pathfinder)
+HybridAStarWithAStarInTheMiddle = CpObject(PathfinderInterface)
 
 ---@param hybridRange number range in meters around start/goal to use hybrid A *  
 function HybridAStarWithAStarInTheMiddle:init(hybridRange)
@@ -389,10 +434,10 @@ function HybridAStarWithAStarInTheMiddle:start(start, goal, turnRadius, allowRev
 		return self:resume(self.goalNode, self.startNode, turnRadius, allowReverse, getNodePenaltyFunc)
 	else
 		self.phase = self.MIDDLE
-		self.coroutine = coroutine.create(self.aStarPathFinder.run)
+		self.coroutine = coroutine.create(self.aStarPathFinder.findPath)
 		self.currentPathFinder = self.aStarPathFinder
 		--return self:resume(start, goal, fieldPolygon)
-		return self:resume(start, goal, turnRadius, allowReverse)
+		return self:resume(start, goal, turnRadius, allowReverse, getNodePenaltyFunc)
 	end
 end
 
