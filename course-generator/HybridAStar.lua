@@ -240,12 +240,22 @@ end
 ---@param node State3D
 function HybridAStar.getNodePenalty(node)
 	if not courseGenerator.isRunningInGame() then return 0 end
+	-- tweak these two parameters to set up how far the path will be from the field or fruit boundary
+	-- size of the area to check for field/fruit
+	local areaSize = 3
+	-- minimum ratio of the area checked must be on field/clear of fruit
+	local minRequiredAreaRatio = 0.8
 	local penalty = 0
-	if not courseplay:isField(node.x, -node.y) then
-		penalty = penalty + 100
-	end
-	if courseplay:areaHasFruit( node.x, -node.y, nil, 1) then
+	local isField, area, totalArea = courseplay:isField(node.x, -node.y, areaSize, areaSize)
+	if area / totalArea < minRequiredAreaRatio then
 		penalty = penalty + 200
+	end
+	if isField then
+		local hasFruit
+		hasFruit, _, area, totalArea = courseplay:areaHasFruit(node.x, -node.y, nil, areaSize, areaSize)
+		if hasFruit and area / totalArea > 1 - minRequiredAreaRatio then
+			penalty = penalty + 10
+		end
 	end
 	return penalty
 end
@@ -417,7 +427,7 @@ function HybridAStarWithAStarInTheMiddle:start(start, goal, turnRadius, allowRev
 	self.aStarPathFinder = AStar()
 	self.retries = 0
 	self.startNode, self.goalNode = State3D:copy(start), State3D:copy(goal)
-	self.turnRadius, self.withReverse = turnRadius, allowReverse
+	self.turnRadius, self.allowReverse = turnRadius, allowReverse
 	self.fieldPolygon, self.getNodePenaltyFunc = fieldPolygon, getNodePenaltyFunc
 	self.hybridRange = self.hybridRange and self.hybridRange or turnRadius * 3
 	-- how far is start/goal apart?
@@ -431,13 +441,13 @@ function HybridAStarWithAStarInTheMiddle:start(start, goal, turnRadius, allowRev
 		-- at the goal. Here we want to end up exactly on the goal point
 		self.startNode:reverseHeading()
 		self.goalNode:reverseHeading()
-		return self:resume(self.goalNode, self.startNode, turnRadius, allowReverse, getNodePenaltyFunc)
+		return self:resume(self.goalNode, self.startNode, turnRadius, self.allowReverse, getNodePenaltyFunc)
 	else
 		self.phase = self.MIDDLE
 		self.coroutine = coroutine.create(self.aStarPathFinder.findPath)
 		self.currentPathFinder = self.aStarPathFinder
 		--return self:resume(start, goal, fieldPolygon)
-		return self:resume(start, goal, turnRadius, allowReverse, getNodePenaltyFunc)
+		return self:resume(start, goal, turnRadius, self.allowReverse, getNodePenaltyFunc)
 	end
 end
 
@@ -494,6 +504,7 @@ function HybridAStarWithAStarInTheMiddle:resume(...)
 					table.insert(self.path, path[i])
 				end
 				self.path:calculateData()
+                self.path:smooth(math.pi / 8, math.pi / 2, 3, 10, #self.path - 10)
 			end
 			return true, self.path
 		end
