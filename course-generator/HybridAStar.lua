@@ -414,21 +414,35 @@ function HybridAStarWithAStarInTheMiddle:init(hybridRange)
 	self.hybridRange = hybridRange
 end
 
+--- Interface function to start the pathfinder in the game
+---@param node  Giants engine node, will be used as the start location/heading.
+---@param goal Waypoint The destination waypoint (x, z, angle)
+---@param turnRadius number turn radius of the vehicle
+---@param allowReverse boolean allow reverse driving
+---@param getNodePenaltyFunc function get penalty for a node, see getNodePenalty()
+function HybridAStarWithAStarInTheMiddle:startFromVehicleToWaypoint(node, goalWaypoint, turnRadius, allowReverse, getNodePenaltyFunc)
+	local x, _, z = getWorldTranslation(node)
+	local lx, _, lz = localDirectionToWorld(node, 0, 0, 1)
+	local yRot = math.atan2(lx, lz)
+	local start = State3D(x, -z, courseGenerator.fromCpAngle(yRot))
+	local goal = State3D(goalWaypoint.x, -goalWaypoint.z, courseGenerator.fromCpAngle(goalWaypoint.angle))
+	return self:start(start, goal, turnRadius, allowReverse, getNodePenaltyFunc)
+end
+
 ---@param start State3D start node
 ---@param goal State3D goal node
 ---@param turnRadius number turn radius of the vehicle
 ---@param allowReverse boolean allow reverse driving
 ---@param getNodePenaltyFunc function get penalty for a node, see getNodePenalty()
----@param fieldPolygon Polygon the field definition polygon
 ---@param getNodePenaltyFunc function function to calculate the penalty for a node. Typically you want to penalize
 --- off-field locations and locations with fruit on the field.
-function HybridAStarWithAStarInTheMiddle:start(start, goal, turnRadius, allowReverse, fieldPolygon, getNodePenaltyFunc)
+function HybridAStarWithAStarInTheMiddle:start(start, goal, turnRadius, allowReverse, getNodePenaltyFunc)
 	self.hybridAStarPathFinder = HybridAStar()
 	self.aStarPathFinder = AStar()
 	self.retries = 0
 	self.startNode, self.goalNode = State3D:copy(start), State3D:copy(goal)
 	self.turnRadius, self.allowReverse = turnRadius, allowReverse
-	self.fieldPolygon, self.getNodePenaltyFunc = fieldPolygon, getNodePenaltyFunc
+	self.getNodePenaltyFunc = getNodePenaltyFunc
 	self.hybridRange = self.hybridRange and self.hybridRange or turnRadius * 3
 	-- how far is start/goal apart?
 	self.startNode:updateH(self.goalNode)

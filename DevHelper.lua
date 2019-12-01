@@ -50,6 +50,10 @@ function DevHelper:update()
     self.data.isField, self.fieldArea, self.totalFieldArea = courseplay:isField(self.data.x, self.data.z, 2, 2)
     self.data.fieldAreaPercent = 100 * self.fieldArea / self.totalFieldArea
 
+    self.data.collidingShapes = overlapBox(self.data.x, self.data.y + 1, self.data.z, 0, self.yRot, 0, 3, 3, 3, "dummy", nil, AIVehicleUtil.COLLISION_MASK, true, true, true)
+
+    self:findVehicleCollisions(node)
+
     if self.pathfinder and self.pathfinder:isActive() then
         local done, path = self.pathfinder:resume()
         if done then
@@ -62,13 +66,13 @@ end
 function DevHelper:keyEvent(unicode, sym, modifier, isDown)
     if not CpManager.isDeveloper then return end
     if bitAND(modifier, Input.MOD_LALT) ~= 0 and isDown and sym == Input.KEY_comma then
-        self:debug('Start %.1f %.1f %.1f', self.yRot, self.data.yRotDeg, courseGenerator.fromCpAngle(self.data.yRotDeg))
+        self:debug('Start %.1f %.1f %.1f', self.yRot, self.data.yRotDeg, courseGenerator.fromCpAngleDeg(self.data.yRotDeg))
 
-        self.start = State3D(self.data.x, -self.data.z, courseGenerator.fromCpAngle(self.data.yRotDeg))
+        self.start = State3D(self.data.x, -self.data.z, courseGenerator.fromCpAngleDeg(self.data.yRotDeg))
     elseif bitAND(modifier, Input.MOD_LALT) ~= 0 and isDown and sym == Input.KEY_period then
         self:debug('Goal')
         self.pathfinder = HybridAStarWithAStarInTheMiddle(20)
-        self.goal = State3D(self.data.x, -self.data.z, courseGenerator.fromCpAngle(self.data.yRotDeg))
+        self.goal = State3D(self.data.x, -self.data.z, courseGenerator.fromCpAngleDeg(self.data.yRotDeg))
         self:debug('Starting pathfinding between %s and %s', tostring(self.start), tostring(self.goal))
         local done, path = self.pathfinder:start(self.start, self.goal, 5, false)
         if done then
@@ -90,7 +94,7 @@ function DevHelper:draw()
     for key, value in pairs(self.data) do
         table.insert(data, {name = key, value = value})
     end
-    DebugUtil.renderTable(0.2, 0.2, 0.02, data, 0.05)
+    DebugUtil.renderTable(0.3, 0.3, 0.02, data, 0.05)
     self:drawCourse()
 end
 
@@ -113,5 +117,45 @@ function DevHelper:drawCourse()
     end
 end
 
+function DevHelper:findVehicleCollisions(myNode)
+    local getCorners = function(node, width, length)
+        local x, y, z = getWorldTranslation(node)
+        return { node = node, width = width, length = length,
+            corners = {
+                {x = x - width / 2, y = y, z = z - length / 2},
+                {x = x - width / 2, y = y, z = z + length / 2},
+                {x = x + width / 2, y = y, z = z + length / 2},
+                {x = x + width / 2, y = y, z = z - length / 2}
+            },
+        }
+    end
+
+    local doOverlap = function(v1, v2)
+        -- check if v1's corners are in v2
+        for _, c in pairs(v1.corners) do
+            local lx, _, lz = worldToLocal(v2.node, c.x, c.y, c.z)
+            if math.abs(lx) < v2.width and math.abs(lz) < v2.length then
+                return true
+            end
+        end
+        return false
+    end
+
+    local myVehicle = getCorners(myNode, 3, 3)
+
+    for _, vehicle in pairs(g_currentMission.vehicles) do
+        if vehicle.rootNode and vehicle.sizeWidth and vehicle.sizeLength then
+            local otherVehicle = getCorners(vehicle.rootNode, vehicle.sizeWidth, vehicle.sizeLength)
+            if doOverlap(myVehicle, otherVehicle) or doOverlap(otherVehicle, myVehicle) then
+                self.data.vehicleOverlap = vehicle:getName()
+                return
+            else
+                self.data.vehicleOverlap = 'none'
+            end
+        end
+    end
+end
+
 -- make sure to recreate the global dev helper whenever this script is (re)loaded
 g_devHelper = DevHelper()
+
