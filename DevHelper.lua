@@ -21,6 +21,9 @@ along with this program.  If not, see <http://www.gnu.org/licenses/>.
 --- 1. mark the start location/heading with Alt + <
 --- 2. mark the goal location/heading with Alt + >
 --- 3. watch the path generated ...
+--- 4. use Ctrl + > to regenerate the path
+---
+--- Also showing field/fruit/collision information when walking around
 DevHelper = CpObject()
 
 function DevHelper:init()
@@ -52,7 +55,12 @@ function DevHelper:update()
 
     self.data.collidingShapes = overlapBox(self.data.x, self.data.y + 1, self.data.z, 0, self.yRot, 0, 3, 3, 3, "dummy", nil, AIVehicleUtil.COLLISION_MASK, true, true, true)
 
-    self:findVehicleCollisions(node)
+    local hasCollision, vehicle = self.findVehicleCollisions(node)
+    if hasCollision then
+        self.data.vehicleOverlap = vehicle
+    else
+        self.data.vehicleOverlap = 'none'
+    end
 
     if self.pathfinder and self.pathfinder:isActive() then
         local done, path = self.pathfinder:resume()
@@ -71,19 +79,29 @@ function DevHelper:keyEvent(unicode, sym, modifier, isDown)
         self.start = State3D(self.data.x, -self.data.z, courseGenerator.fromCpAngleDeg(self.data.yRotDeg))
     elseif bitAND(modifier, Input.MOD_LALT) ~= 0 and isDown and sym == Input.KEY_period then
         self:debug('Goal')
-        self.pathfinder = HybridAStarWithAStarInTheMiddle(20)
         self.goal = State3D(self.data.x, -self.data.z, courseGenerator.fromCpAngleDeg(self.data.yRotDeg))
-        self:debug('Starting pathfinding between %s and %s', tostring(self.start), tostring(self.goal))
-        local done, path = self.pathfinder:start(self.start, self.goal, 5, false)
-        if done then
-            if path then
-                self:loadPath(path)
-            else
-                self:debug('No path found')
-            end
+        self:startPathfinding()
+    elseif bitAND(modifier, Input.MOD_LCTRL) ~= 0 and isDown and sym == Input.KEY_period then
+        self:debug('Recalculate')
+        self:startPathfinding()
+    end
+end
+
+function DevHelper:startPathfinding()
+    self.pathfinderStartTime = g_time
+    DevHelper.setUpVehicleCollisionData()
+    self.pathfinder = HybridAStarWithAStarInTheMiddle(20)
+    self:debug('Starting pathfinding between %s and %s', tostring(self.start), tostring(self.goal))
+    local done, path = self.pathfinder:start(self.start, self.goal, 5, false, nil, DevHelper.isValidNode)
+    if done then
+        if path then
+            self:loadPath(path)
+        else
+            self:debug('No path found')
         end
     end
 end
+
 
 function DevHelper:mouseEvent(posX, posY, isDown, isUp, mouseKey)
 end
@@ -100,7 +118,7 @@ end
 
 ---@param path State3D[]
 function DevHelper:loadPath(path)
-    self:debug('Path with %d waypoint found', #path)
+    self:debug('Path with %d waypoint found, finished in %d ms', #path, g_time - self.pathfinderStartTime)
     self.course = Course(nil, courseGenerator.pointsToXz(path), true)
 end
 
@@ -117,45 +135,51 @@ function DevHelper:drawCourse()
     end
 end
 
-function DevHelper:findVehicleCollisions(myNode)
-    local getCorners = function(node, width, length)
-        local x, y, z = getWorldTranslation(node)
-        return { node = node, width = width, length = length,
-            corners = {
-                {x = x - width / 2, y = y, z = z - length / 2},
-                {x = x - width / 2, y = y, z = z + length / 2},
-                {x = x + width / 2, y = y, z = z + length / 2},
-                {x = x + width / 2, y = y, z = z - length / 2}
-            },
-        }
+---@param node State3D
+function DevHelper.isValidNode(node)
+    if not g_pathfinderHelperNode then
+        g_pathfinderHelperNode = courseplay.createNode('pathfinderHelper', node.x, -node.y, 0)
     end
+    local y = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, node.x, 0, -node.y);
+    setTranslation(g_pathfinderHelperNode, node.x, y, -node.y)
+    return not DevHelper.findVehicleCollisions(g_pathfinderHelperNode)
+end
 
-    local doOverlap = function(v1, v2)
-        -- check if v1's corners are in v2
-        for _, c in pairs(v1.corners) do
-            local lx, _, lz = worldToLocal(v2.node, c.x, c.y, c.z)
-            if math.abs(lx) < v2.width and math.abs(lz) < v2.length then
-                return true
-            end
-        end
-        return false
-    end
+function DevHelper.getCorners(node, width, length, name)
+    local x, y, z = getWorldTranslation(node)
+    return { node = node, width = width, length = length, name = name,
+             corners = {
+                 {x = x - width / 2, y = y, z = z - length / 2},
+                 {x = x - width / 2, y = y, z = z + length / 2},
+                 {x = x + width / 2, y = y, z = z + length / 2},
+                 {x = x + width / 2, y = y, z = z - length / 2}
+             },
+    }
+end
 
-    local myVehicle = getCorners(myNode, 3, 3)
 
+function DevHelper.setUpVehicleCollisionData()
+    g_pathfinderVehicleCollisionData = {}
     for _, vehicle in pairs(g_currentMission.vehicles) do
         if vehicle.rootNode and vehicle.sizeWidth and vehicle.sizeLength then
-            local otherVehicle = getCorners(vehicle.rootNode, vehicle.sizeWidth, vehicle.sizeLength)
-            if doOverlap(myVehicle, otherVehicle) or doOverlap(otherVehicle, myVehicle) then
-                self.data.vehicleOverlap = vehicle:getName()
-                return
-            else
-                self.data.vehicleOverlap = 'none'
-            end
+            table.insert(g_pathfinderVehicleCollisionData, DevHelper.getCorners(vehicle.rootNode, vehicle.sizeWidth, vehicle.sizeLength, vehicle:getName()))
         end
     end
 end
 
+
+function DevHelper.findVehicleCollisions(myNode)
+
+    local myVehicle = DevHelper.getCorners(myNode, 3, 3, 'me')
+
+    for _, collisionData in pairs(g_pathfinderVehicleCollisionData) do
+        if HybridAStar.doRectanglesOverlap(myVehicle.corners, collisionData.corners) then
+            return true, collisionData.name
+        end
+    end
+    return false
+end
+
 -- make sure to recreate the global dev helper whenever this script is (re)loaded
 g_devHelper = DevHelper()
-
+DevHelper.setUpVehicleCollisionData()
