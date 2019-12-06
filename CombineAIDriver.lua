@@ -36,7 +36,10 @@ CombineAIDriver.myStates = {
 	WAITING_FOR_UNLOAD_IN_POCKET = {},
 	WAITING_FOR_UNLOAD_AFTER_COURSE_ENDED = {},
 	WAITING_FOR_UNLOADER_TO_LEAVE = {},
-	RETURNING_FROM_POCKET = {}
+	RETURNING_FROM_POCKET = {},
+	DRIVING_TO_SELF_UNLOAD = {},
+	SELF_UNLOADING = {},
+	RETURNING_FROM_SELF_UNLOAD = {}
 }
 
 function CombineAIDriver:init(vehicle)
@@ -76,6 +79,18 @@ function CombineAIDriver:init(vehicle)
 		local dx, _, _ = localToLocal(dischargeNode.node, self.vehicle.rootNode, 0, 0, 0)
 		self.pipeOnLeftSide = dx > 0
 		self:debug('Pipe on left side %s', tostring(self.pipeOnLeftSide))
+		-- check the pipe length:
+		-- unfold everything, open the pipe, check the side offset, then close pipe, fold everything
+		if self.vehicle.spec_foldable then
+			Foldable.setAnimTime(self.vehicle.spec_foldable, 1, true)
+		end
+		self.pipe:setAnimationTime(self.pipe.animation.name, 1, true)
+		self.pipeOffset, _, _ = localToLocal(dischargeNode.node, self.vehicle.rootNode, 0, 0, 0)
+		self:debug('Pipe offset: %.1f', self.pipeOffset)
+		self.pipe:setAnimationTime(self.pipe.animation.name, 0, true)
+		if self.vehicle.spec_foldable then
+			Foldable.setAnimTime(self.vehicle.spec_foldable, 0, true)
+		end
 	else
 		self.pipeOnLeftSide = true
 	end
@@ -146,6 +161,8 @@ end
 
 function CombineAIDriver:changeToFieldworkUnloadOrRefill()
 	if self.vehicle.cp.realisticDriving then
+		self:startSelfUnload()
+
 		self:checkFruit()
 		-- TODO: check around turn maneuvers we may not want to pull back before a turn
 		if self:shouldMakePocket() then
@@ -249,6 +266,8 @@ function CombineAIDriver:driveFieldworkUnloadOrRefill()
 				self:changeToFieldwork()
 			end
 		end
+	elseif self.fieldWorkUnloadOrRefillState == self.states.DRIVING_TO_SELF_UNLOAD then
+		self:setSpeed(10)
 	else
 		UnloadableFieldworkAIDriver.driveFieldworkUnloadOrRefill(self)
 	end
@@ -798,4 +817,56 @@ function CombineAIDriver:isPotatoOrSugarBeetHarvester()
 		end
 	end
 	return false
+end
+
+function CombineAIDriver:findBestTrailer()
+	local bestTrailer
+	local minDistance = math.huge
+	for _, vehicle in pairs(g_currentMission.vehicles) do
+		if SpecializationUtil.hasSpecialization(Trailer, vehicle.specializations) then
+			local rootVehicle = vehicle:getRootVehicle()
+			local attacherVehicle
+			if SpecializationUtil.hasSpecialization(Attachable, vehicle.specializations) then
+				attacherVehicle = vehicle.spec_attachable:getAttacherVehicle()
+			end
+			local fieldNum = courseplay.fields:onWhichFieldAmI(vehicle)
+			local x, _, z = getWorldTranslation(vehicle.rootNode)
+			local closestDistance = courseplay.fields:getClosestDistanceToFieldEdge(self.data.fieldNum, x, z)
+			self:debug('%s is a trailer on field %d, closest distance to %d is %.1f, attached to %s, root vehicle is %s', vehicle:getName(),
+					fieldNum, self.data.fieldNum, closestDistance, attacherVehicle and attacherVehicle:getName() or 'none', rootVehicle:getName())
+			local d = courseplay:distanceToObject(self.vehicle, vehicle)
+			if d < minDistance then
+				bestTrailer = vehicle
+			end
+		end
+	end
+	if bestTrailer then
+		self:debug('Best trailer is %s at %.1f meters', bestTrailer:getName(), minDistance)
+	end
+	return bestTrailer
+end
+
+function CombineAIDriver:startSelfUnload()
+	local bestTrailer = self:findBestTrailer()
+	if not bestTrailer then return false end
+
+	if not self.pathfinder or not self.pathfinder:isActive() then
+		self.pathFindingStartedAt = self.vehicle.timer
+		self.courseAfterPathfinding = nil
+		self.waypointIxAfterPathfinding = nil
+		local done, path
+		self.pathfinder, done, path = PathfinderUtil.startPathfindingFromVehicleNode(self.vehicle, bestTrailer.rootNode, -self.pipeOffset, false)
+		if done then
+			return self:onPathfindingDone(path)
+		end
+	else
+		self:debug('Pathfinder already active')
+	end
+	return true
+end
+
+function CombineAIDriver:onPathfindingDone(path)
+	self:debug('Pathfinding finished with %d waypoints (%d ms)', #path, self.vehicle.timer - (self.pathFindingStartedAt or 0))
+	local selfUnloadCourse = Course(self.vehicle, courseGenerator.pointsToXzInPlace(path), true)
+	self:startCourse(selfUnloadCourse, 1)
 end

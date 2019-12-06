@@ -1070,7 +1070,8 @@ function Polyline:shortenEnd(d)
 	local from = #self
 	for i = from, 2, -1 do
 		dCut = dCut - self[i - 1].nextEdge.length
-		if dCut < 0 then
+		-- check for something else than zero to make sure the new point does not overlap with the last we did not cut
+		if dCut < -0.1 then
 			local p = addPolarVectorToPoint(self[i - 1], self[i - 1].nextEdge.angle, - dCut)
 			table.remove(self)
 			table.insert(self, p)

@@ -39,7 +39,10 @@ function State3D:init(x, y, t, g, pred, motionPrimitive)
     self.open = false
     self.closed = false
     self.motionPrimitive = motionPrimitive
-    -- penalty for using this node, to avoid obstacles, stay in an area, etc.
+    if motionPrimitive and HybridAStar.MotionPrimitives.isReverse(motionPrimitive) then
+        self.reverse = true
+    end
+        -- penalty for using this node, to avoid obstacles, stay in an area, etc.
     self.nodePenalty = 0
 end
 

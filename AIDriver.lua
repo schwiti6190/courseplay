@@ -1294,31 +1294,6 @@ function AIDriver:driveToPointWithPathfinding(tx, tz, course, ix)
 	return false
 end
 
-function AIDriver:driveToPointWithBetterPathfinding(node, waypoint, turnRadius, course, ix)
-	if self.vehicle.cp.realisticDriving then
-		self.pathfinder = HybridAStarWithAStarInTheMiddle()
-		if not self.pathfinder:isActive() then
-			self.pathFindingStartedAt = self.vehicle.timer
-			self.courseAfterPathfinding = course
-			self.waypointIxAfterPathfinding = ix
-			-- TODO: move this coordinate transformation into the pathfinder, it is internal
-			local done, path = self.pathfinder:startFromVehicleToWaypoint(node, waypoint, turnRadius, false)
-			if done then
-				return self:onPathfindingDone(path)
-			end
-		else
-			self:debug('Pathfinder already active')
-		end
-		return true
-	else
-		self:debug('Pathfinding turned off, falling back to dumb mode')
-	end
-	self.courseAfterPathfinding = nil
-	self.waypointIxAfterPathfinding = nil
-	return false
-end
-
-
 function AIDriver:updatePathfinding()
 	if self.pathfinder:isActive() then
 		-- stop while pathfinding is running

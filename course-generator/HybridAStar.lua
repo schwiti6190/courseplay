@@ -239,25 +239,7 @@ end
 --- obstacle avoidance or forcing the search to remain in certain areas.
 ---@param node State3D
 function HybridAStar.getNodePenalty(node)
-	if not courseGenerator.isRunningInGame() then return 0 end
-	-- tweak these two parameters to set up how far the path will be from the field or fruit boundary
-	-- size of the area to check for field/fruit
-	local areaSize = 3
-	-- minimum ratio of the area checked must be on field/clear of fruit
-	local minRequiredAreaRatio = 0.8
-	local penalty = 0
-	local isField, area, totalArea = courseplay:isField(node.x, -node.y, areaSize, areaSize)
-	if area / totalArea < minRequiredAreaRatio then
-		penalty = penalty + 200
-	end
-	if isField then
-		local hasFruit
-		hasFruit, _, area, totalArea = courseplay:areaHasFruit(node.x, -node.y, nil, areaSize, areaSize)
-		if hasFruit and area / totalArea > 1 - minRequiredAreaRatio then
-			penalty = penalty + 10
-		end
-	end
-	return penalty
+	return 0
 end
 
 function HybridAStar.isValidNode(node)
@@ -270,10 +252,12 @@ end
 
 ---@param start State3D start node
 ---@param goal State3D goal node
+---@param length number length of the vehicle
+---@param width number width of the vehicle, used with length to find nodes invalid due to collision
 ---@param turnRadius number turn radius of the vehicle
 ---@param allowReverse boolean allow reverse driving
 ---@param getNodePenaltyFunc function get penalty for a node, see getNodePenalty()
-function HybridAStar:findPath(start, goal, turnRadius, allowReverse, getNodePenaltyFunc, isValidNodeFunc)
+function HybridAStar:findPath(start, goal, length, width, turnRadius, allowReverse, getNodePenaltyFunc, isValidNodeFunc)
 	if not getNodePenaltyFunc then getNodePenaltyFunc = self.getNodePenalty end
 	if not isValidNodeFunc then isValidNodeFunc = self.isValidNode end
 	-- a motion primitive is straight or a few degree turn to the right or left
@@ -320,7 +304,7 @@ function HybridAStar:findPath(start, goal, turnRadius, allowReverse, getNodePena
 				local succ = pred:createSuccessor(primitive)
 				local existingSuccNode = self.nodes:get(succ)
 				if not existingSuccNode or (existingSuccNode and not existingSuccNode:isClosed()) then
-					if isValidNodeFunc(succ) then
+					if isValidNodeFunc(succ, length, width) then
 						succ:updateG(primitive, getNodePenaltyFunc(succ))
 						succ:updateH(goal, turnRadius)
 						if existingSuccNode then
@@ -376,8 +360,8 @@ function HybridAStar:rollUpPath(node, goal)
 	self:debug('Goal node at %.2f/%.2f, cost %.1f (%.1f - %.1f)', goal.x, goal.y, node.cost,
 			self.nodes.lowestCost, self.nodes.highestCost)
 	self:debug('Iterations %d, yields %d', self.iterations, self.yields)
-	table.insert(self.path, 1, goal)
-	while currentNode.pred and #self.path < 1000 and currentNode ~= currentNode.pred do
+	table.insert(self.path, 1, currentNode)
+	while currentNode.pred and currentNode ~= currentNode.pred do
 		table.insert(self.path, 1, currentNode.pred)
 		currentNode = currentNode.pred
 	end
@@ -424,35 +408,21 @@ function HybridAStarWithAStarInTheMiddle:init(hybridRange)
 	self.hybridRange = hybridRange
 end
 
---- Interface function to start the pathfinder in the game
----@param node  Giants engine node, will be used as the start location/heading.
----@param goal Waypoint The destination waypoint (x, z, angle)
----@param turnRadius number turn radius of the vehicle
----@param allowReverse boolean allow reverse driving
----@param getNodePenaltyFunc function function to calculate the penalty for a node. Typically you want to penalize
---- off-field locations and locations with fruit on the field.
----@param isValidNodeFunc function function to check if a node should even be considered
-function HybridAStarWithAStarInTheMiddle:startFromVehicleToWaypoint(node, goalWaypoint, turnRadius, allowReverse, getNodePenaltyFunc, isValidNodeFunc)
-	local x, _, z = getWorldTranslation(node)
-	local lx, _, lz = localDirectionToWorld(node, 0, 0, 1)
-	local yRot = math.atan2(lx, lz)
-	local start = State3D(x, -z, courseGenerator.fromCpAngle(yRot))
-	local goal = State3D(goalWaypoint.x, -goalWaypoint.z, courseGenerator.fromCpAngle(goalWaypoint.angle))
-	return self:start(start, goal, turnRadius, allowReverse, getNodePenaltyFunc, isValidNodeFunc)
-end
-
 ---@param start State3D start node
 ---@param goal State3D goal node
+---@param length number length of the vehicle
+---@param width number width of the vehicle, used with length to find nodes invalid due to collision
 ---@param turnRadius number turn radius of the vehicle
 ---@param allowReverse boolean allow reverse driving
 ---@param getNodePenaltyFunc function function to calculate the penalty for a node. Typically you want to penalize
 --- off-field locations and locations with fruit on the field.
 ---@param isValidNodeFunc function function to check if a node should even be considered
-function HybridAStarWithAStarInTheMiddle:start(start, goal, turnRadius, allowReverse, getNodePenaltyFunc, isValidNodeFunc)
+function HybridAStarWithAStarInTheMiddle:start(start, goal, length, width, turnRadius, allowReverse, getNodePenaltyFunc, isValidNodeFunc)
 	self.hybridAStarPathFinder = HybridAStar()
 	self.aStarPathFinder = AStar()
 	self.retries = 0
 	self.startNode, self.goalNode = State3D:copy(start), State3D:copy(goal)
+	self.length, self.width = length, width
 	self.turnRadius, self.allowReverse = turnRadius, allowReverse
 	self.getNodePenaltyFunc = getNodePenaltyFunc
 	self.isValidNodeFunc = isValidNodeFunc
@@ -468,13 +438,12 @@ function HybridAStarWithAStarInTheMiddle:start(start, goal, turnRadius, allowRev
 		-- at the goal. Here we want to end up exactly on the goal point
 		self.startNode:reverseHeading()
 		self.goalNode:reverseHeading()
-		return self:resume(self.goalNode, self.startNode, turnRadius, self.allowReverse, getNodePenaltyFunc, isValidNodeFunc)
+		return self:resume(self.goalNode, self.startNode, self.length, self.width, turnRadius, self.allowReverse, getNodePenaltyFunc, isValidNodeFunc)
 	else
 		self.phase = self.MIDDLE
 		self.coroutine = coroutine.create(self.aStarPathFinder.findPath)
 		self.currentPathFinder = self.aStarPathFinder
-		--return self:resume(start, goal, fieldPolygon)
-		return self:resume(start, goal, turnRadius, self.allowReverse, getNodePenaltyFunc, isValidNodeFunc)
+		return self:resume(start, goal, self.length, self.width, turnRadius, self.allowReverse, getNodePenaltyFunc, isValidNodeFunc)
 	end
 end
 
@@ -488,6 +457,7 @@ function HybridAStarWithAStarInTheMiddle:resume(...)
 	end
 	if done then
 		self.coroutine = nil
+		if not path then return true, nil end
 		self.nodes = self.hybridAStarPathFinder.nodes
 		if self.phase == self.ALL_HYBRID then
 			-- start and node near, just one phase, all hybrid, we are done
@@ -497,7 +467,6 @@ function HybridAStarWithAStarInTheMiddle:resume(...)
 			self:reverseTable(path)
 			return true, path
 		elseif self.phase == self.MIDDLE then
-			if not path then return true, nil end
 			-- middle part ready, now trim start and end to make room for the hybrid parts
 			self.middlePath = Polyline:new(path)
 			self.middlePath:calculateData()
@@ -508,7 +477,7 @@ function HybridAStarWithAStarInTheMiddle:resume(...)
 			self.coroutine = coroutine.create(self.hybridAStarPathFinder.findPath)
 			self.currentPathFinder = self.hybridAStarPathFinder
 			local goal = State3D(self.middlePath[1].x, self.middlePath[1].y, self.middlePath[1].nextEdge.angle)
-			return self:resume(self.startNode, goal, self.turnRadius, self.allowReverse, self.getNodePenaltyFunc, self.isValidNodeFunc)
+			return self:resume(self.startNode, goal, self.length, self.width, self.turnRadius, self.allowReverse, self.getNodePenaltyFunc, self.isValidNodeFunc)
 		elseif self.phase == self.START_TO_MIDDLE then
 			-- start and middle sections ready
 			-- append middle to start
@@ -520,7 +489,14 @@ function HybridAStarWithAStarInTheMiddle:resume(...)
 			end
 			self.path:calculateData()
 			-- generate middle to end
-			return self:startMiddleToEnd()
+			self.phase = self.MIDDLE_TO_END
+			self.coroutine = coroutine.create(self.hybridAStarPathFinder.findPath)
+			self.currentPathFinder = self.hybridAStarPathFinder
+			-- swap start and goal as the path will always start exactly at the start point but will only approximately end
+			-- at the goal. Here we want to end up exactly on the goal point
+			local start = State3D(self.middlePath[#self.middlePath].x, self.middlePath[#self.middlePath].y, reverseAngle(self.middlePath[#self.middlePath].prevEdge.angle))
+			self.goalNode:reverseHeading()
+			return self:resume(self.goalNode, start, self.length, self.width, self.turnRadius, self.allowReverse, self.getNodePenaltyFunc)
 		else
 			if path then
 				-- last piece is ready, this was generated from the goal point to the end of the middle section so
@@ -539,81 +515,12 @@ function HybridAStarWithAStarInTheMiddle:resume(...)
 	return false
 end
 
-function HybridAStarWithAStarInTheMiddle:startMiddleToEnd()
-	self.phase = self.MIDDLE_TO_END
-	self.coroutine = coroutine.create(self.hybridAStarPathFinder.findPath)
-	self.currentPathFinder = self.hybridAStarPathFinder
-	-- swap start and goal as the path will always start exactly at the start point but will only approximatly end
-	-- at the goal. Here we want to end up exactly on the goal point
-	local start = State3D(self.middlePath[#self.middlePath].x, self.middlePath[#self.middlePath].y, reverseAngle(self.middlePath[#self.middlePath].prevEdge.angle))
-	self.goalNode:reverseHeading()
-	return self:resume(self.goalNode, start, self.turnRadius, self.allowReverse, self.getNodePenaltyFunc)
-end
-
 -- TODO: put this in a global lib, instead of helpers.lua as helpers.lua depends on courseplay.
 function HybridAStarWithAStarInTheMiddle:reverseTable(t)
 	local i, j = 1, #t
-
 	while i < j do
 		t[i], t[j] = t[j], t[i]
-
 		i = i + 1
 		j = j - 1
 	end
 end;
-
---- This is a simplified implementation of the Separating Axis Test, based on Stephan Schloesser's code in AutoDrive.
---- The implementation assumes that a and b are rectangles (not any polygon)
---- We use this during the pathfinding to drive around other vehicles
-function HybridAStar.doRectanglesOverlap(a, b)
-
-	if math.abs(a[1].x - b[1].x )> 50 then return false end
-
-	for _, rectangle in pairs({a, b}) do
-		
-		-- leverage the fact that rectangles have parallel edges, only need to check the first two
-		for i = 1, 2 do
-			--grab 2 vertices to create an edge
-			local p1 = rectangle[i]
-			local p2 = rectangle[i + 1]
-
-			-- find the line perpendicular to this edge
-			local normal = {x = p2.z - p1.z, z = p1.x - p2.x}
-
-			local minA = math.huge
-			local maxA = -math.huge
-			
-			-- for each vertex in the first shape, project it onto the line perpendicular to the edge
-			-- and keep track of the min and max of these values
-			for _, corner in pairs(a) do
-				local projected = normal.x * corner.x + normal.z * corner.z
-				if projected < minA then
-					minA = projected
-				end
-				if projected > maxA then
-					maxA = projected
-				end
-			end
-
-			--for each vertex in the second shape, project it onto the line perpendicular to the edge
-			--and keep track of the min and max of these values
-			local minB = math.huge
-			local maxB = -math.huge
-			for _, corner in pairs(b) do
-				local projected = normal.x * corner.x + normal.z * corner.z
-				if projected < minB then
-					minB = projected
-				end
-				if projected > maxB then
-					maxB = projected
-				end
-			end
-			-- if there is no overlap between the projections, the edge we are looking at separates the two
-			-- rectangles, and we know there is no overlap
-			if maxA < minB or maxB < minA then
-				return false
-			end
-		end
-	end
-	return true
-end

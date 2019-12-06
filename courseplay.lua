@@ -100,6 +100,7 @@ local function initialize()
 		'AITurn',
 		'course-generator/geo',
 		'course-generator/Pathfinder',
+		'course-generator/PathfinderUtil',
 		'course-generator/Island',
 		'course-generator/courseGenerator',
 		'course-generator/cp',

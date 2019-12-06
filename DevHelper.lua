@@ -55,7 +55,7 @@ function DevHelper:update()
 
     self.data.collidingShapes = overlapBox(self.data.x, self.data.y + 1, self.data.z, 0, self.yRot, 0, 3, 3, 3, "dummy", nil, AIVehicleUtil.COLLISION_MASK, true, true, true)
 
-    local hasCollision, vehicle = self.findVehicleCollisions(node)
+    local hasCollision, vehicle = PathfinderUtil.findCollidingVehicles(node, 6, 2.5)
     if hasCollision then
         self.data.vehicleOverlap = vehicle
     else
@@ -75,8 +75,8 @@ function DevHelper:keyEvent(unicode, sym, modifier, isDown)
     if not CpManager.isDeveloper then return end
     if bitAND(modifier, Input.MOD_LALT) ~= 0 and isDown and sym == Input.KEY_comma then
         self:debug('Start %.1f %.1f %.1f', self.yRot, self.data.yRotDeg, courseGenerator.fromCpAngleDeg(self.data.yRotDeg))
-
         self.start = State3D(self.data.x, -self.data.z, courseGenerator.fromCpAngleDeg(self.data.yRotDeg))
+        self:findTrailers()
     elseif bitAND(modifier, Input.MOD_LALT) ~= 0 and isDown and sym == Input.KEY_period then
         self:debug('Goal')
         self.goal = State3D(self.data.x, -self.data.z, courseGenerator.fromCpAngleDeg(self.data.yRotDeg))
@@ -89,10 +89,9 @@ end
 
 function DevHelper:startPathfinding()
     self.pathfinderStartTime = g_time
-    DevHelper.setUpVehicleCollisionData()
-    self.pathfinder = HybridAStarWithAStarInTheMiddle(20)
     self:debug('Starting pathfinding between %s and %s', tostring(self.start), tostring(self.goal))
-    local done, path = self.pathfinder:start(self.start, self.goal, 5, false, nil, DevHelper.isValidNode)
+    local done, path
+    self.pathfinder, done, path = PathfinderUtil.startPathfinding(self.start, self.goal, 6, 2.5, 5, false)
     if done then
         if path then
             self:loadPath(path)
@@ -101,7 +100,6 @@ function DevHelper:startPathfinding()
         end
     end
 end
-
 
 function DevHelper:mouseEvent(posX, posY, isDown, isUp, mouseKey)
 end
@@ -119,7 +117,7 @@ end
 ---@param path State3D[]
 function DevHelper:loadPath(path)
     self:debug('Path with %d waypoint found, finished in %d ms', #path, g_time - self.pathfinderStartTime)
-    self.course = Course(nil, courseGenerator.pointsToXz(path), true)
+    self.course = Course(nil, courseGenerator.pointsToXzInPlace(path), true)
 end
 
 function DevHelper:drawCourse()
@@ -135,49 +133,22 @@ function DevHelper:drawCourse()
     end
 end
 
----@param node State3D
-function DevHelper.isValidNode(node)
-    if not g_pathfinderHelperNode then
-        g_pathfinderHelperNode = courseplay.createNode('pathfinderHelper', node.x, -node.y, 0)
-    end
-    local y = getTerrainHeightAtWorldPos(g_currentMission.terrainRootNode, node.x, 0, -node.y);
-    setTranslation(g_pathfinderHelperNode, node.x, y, -node.y)
-    return not DevHelper.findVehicleCollisions(g_pathfinderHelperNode)
-end
 
-function DevHelper.getCorners(node, width, length, name)
-    local x, y, z = getWorldTranslation(node)
-    return { node = node, width = width, length = length, name = name,
-             corners = {
-                 {x = x - width / 2, y = y, z = z - length / 2},
-                 {x = x - width / 2, y = y, z = z + length / 2},
-                 {x = x + width / 2, y = y, z = z + length / 2},
-                 {x = x + width / 2, y = y, z = z - length / 2}
-             },
-    }
-end
-
-
-function DevHelper.setUpVehicleCollisionData()
-    g_pathfinderVehicleCollisionData = {}
+function DevHelper:findTrailers()
     for _, vehicle in pairs(g_currentMission.vehicles) do
-        if vehicle.rootNode and vehicle.sizeWidth and vehicle.sizeLength then
-            table.insert(g_pathfinderVehicleCollisionData, DevHelper.getCorners(vehicle.rootNode, vehicle.sizeWidth, vehicle.sizeLength, vehicle:getName()))
+        if SpecializationUtil.hasSpecialization(Trailer, vehicle.specializations) then
+            local rootVehicle = vehicle:getRootVehicle()
+            local attacherVehicle
+            if SpecializationUtil.hasSpecialization(Attachable, vehicle.specializations) then
+                attacherVehicle = vehicle.spec_attachable:getAttacherVehicle()
+            end
+            local fieldNum = courseplay.fields:onWhichFieldAmI(vehicle)
+            local x, _, z = getWorldTranslation(vehicle.rootNode)
+            local closestDistance = courseplay.fields:getClosestDistanceToFieldEdge(self.data.fieldNum, x, z)
+            courseplay.debugVehicle(14, vehicle, 'is a trailer on field %d, closest distance to %d is %.1f, attached to %s, root vehicle is %s',
+                    fieldNum, self.data.fieldNum, closestDistance, attacherVehicle and attacherVehicle:getName() or 'none', rootVehicle:getName())
         end
     end
-end
-
-
-function DevHelper.findVehicleCollisions(myNode)
-
-    local myVehicle = DevHelper.getCorners(myNode, 3, 3, 'me')
-
-    for _, collisionData in pairs(g_pathfinderVehicleCollisionData) do
-        if HybridAStar.doRectanglesOverlap(myVehicle.corners, collisionData.corners) then
-            return true, collisionData.name
-        end
-    end
-    return false
 end
 
 -- make sure to recreate the global dev helper whenever this script is (re)loaded

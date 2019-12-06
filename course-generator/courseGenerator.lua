@@ -126,6 +126,16 @@ function courseGenerator.pointsToXz( points )
 	return result
 end
 
+--- Convert an array of points from x/y to x/z in place (also keeping other attributes)
+function courseGenerator.pointsToXzInPlace(points)
+	for _, point in ipairs(points) do
+		point.z = -point.y
+		-- wipe y as it is a different coordinate in this system
+		point.y = nil
+	end
+	return points
+end
+
 function courseGenerator.pointsToCxCz( points )
 	local result = {}
 	for _, point in ipairs( points) do
@@ -145,13 +155,22 @@ end
 --- Convert our angle representation (measured from the x axis up in radians)
 -- into CP's, where 0 is to the south, to our negative y axis.
 --
-function courseGenerator.toCpAngle( angle )
+function courseGenerator.toCpAngleDeg( angle )
 	local a = math.deg( angle ) + 90
 	if a > 180 then
 		a = a - 360
 	end
 	return a
 end
+
+function courseGenerator.toCpAngle( angle )
+	local a = angle + math.pi / 2
+	if a > math.pi then
+		a = a - 2 * math.pi
+	end
+	return a
+end
+
 
 --- Convert the Courseplay angle to the Cartesian representation
 function courseGenerator.fromCpAngleDeg(angleDeg)
