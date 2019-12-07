@@ -2330,7 +2330,7 @@ end
 SelfUnloadSetting = CpObject(BooleanSetting)
 function SelfUnloadSetting:init()
 	BooleanSetting.init(self, 'selfUnload', 'COURSEPLAY_SELF_UNLOAD',
-		'COURSEPLAY_SELF_UNLOAD')
+		'COURSEPLAY_SELF_UNLOAD_TOOLTIP')
 end
 
 --- Container for settings

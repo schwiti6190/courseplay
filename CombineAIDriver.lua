@@ -80,16 +80,22 @@ function CombineAIDriver:init(vehicle)
 		self.pipeOnLeftSide = dx > 0
 		self:debug('Pipe on left side %s', tostring(self.pipeOnLeftSide))
 		-- check the pipe length:
-		-- unfold everything, open the pipe, check the side offset, then close pipe, fold everything
+		-- unfold everything, open the pipe, check the side offset, then close pipe, fold everything back (if it was folded)
+		local wasFolded
 		if self.vehicle.spec_foldable then
-			Foldable.setAnimTime(self.vehicle.spec_foldable, 1, true)
+			wasFolded = not self.vehicle.spec_foldable:getIsUnfolded()
+			if wasFolded then
+				Foldable.setAnimTime(self.vehicle.spec_foldable, 1, true)
+			end
 		end
 		self.pipe:setAnimationTime(self.pipe.animation.name, 1, true)
 		self.pipeOffset, _, _ = localToLocal(dischargeNode.node, self.vehicle.rootNode, 0, 0, 0)
 		self:debug('Pipe offset: %.1f', self.pipeOffset)
 		self.pipe:setAnimationTime(self.pipe.animation.name, 0, true)
 		if self.vehicle.spec_foldable then
-			Foldable.setAnimTime(self.vehicle.spec_foldable, 0, true)
+			if wasFolded then
+				Foldable.setAnimTime(self.vehicle.spec_foldable, 0, true)
+			end
 		end
 	else
 		self.pipeOnLeftSide = true
@@ -161,11 +167,12 @@ end
 
 function CombineAIDriver:changeToFieldworkUnloadOrRefill()
 	if self.vehicle.cp.realisticDriving then
-		self:startSelfUnload()
-
 		self:checkFruit()
 		-- TODO: check around turn maneuvers we may not want to pull back before a turn
-		if self:shouldMakePocket() then
+		if self.vehicle.cp.settings.selfUnload:is(true) and self:startSelfUnload() then
+			self.fieldworkState = self.states.UNLOAD_OR_REFILL_ON_FIELD
+			self.fieldWorkUnloadOrRefillState = self.states.DRIVING_TO_SELF_UNLOAD
+		elseif self:shouldMakePocket() then
 			-- I'm on the edge of the field or fruit is on both sides, make a pocket on the right side and wait there for the unload
 			local pocketCourse, nextIx = self:createPocketCourse()
 			if pocketCourse then
@@ -769,25 +776,31 @@ function CombineAIDriver:shouldStopForUnloading(pc)
 end
 
 function CombineAIDriver:isFillableTrailerUnderPipe()
-	local canLoad = false
 	if self.pipe then
 		for trailer, value in pairs(self.pipe.objectsInTriggers) do
 			if value > 0 then
-				local fillType = self:getFillType()
-				--self:debug('ojects = %d, fillType = %s fus=%s', value, tostring(fillType), tostring(trailer:getFillUnits()))
-				if fillType then
-					local fillUnits = trailer:getFillUnits()
-					for i=1, #fillUnits do
-						local supportedFillTypes = trailer:getFillUnitSupportedFillTypes(i)
-						if supportedFillTypes[fillType] and trailer:getFillUnitFreeCapacity(i) > 0 then
-							canLoad = true
-						end
-					end
+				if self:canLoadTrailer(trailer) then
+					return true
 				end
 			end
 		end
 	end
-	return canLoad
+	return false
+end
+
+function CombineAIDriver:canLoadTrailer(trailer)
+	local fillType = self:getFillType()
+	if fillType then
+		local fillUnits = trailer:getFillUnits()
+		for i=1, #fillUnits do
+			local supportedFillTypes = trailer:getFillUnitSupportedFillTypes(i)
+			local freeCapacity =  trailer:getFillUnitFreeCapacity(i)
+			if supportedFillTypes[fillType] and freeCapacity > 0 then
+				return true, freeCapacity
+			end
+		end
+	end
+	return false, 0
 end
 
 -- even if there is a trailer in range, we should not start moving until the pipe is turned towards the
@@ -822,6 +835,7 @@ end
 function CombineAIDriver:findBestTrailer()
 	local bestTrailer
 	local minDistance = math.huge
+	local maxCapacity = 0
 	for _, vehicle in pairs(g_currentMission.vehicles) do
 		if SpecializationUtil.hasSpecialization(Trailer, vehicle.specializations) then
 			local rootVehicle = vehicle:getRootVehicle()
@@ -831,17 +845,20 @@ function CombineAIDriver:findBestTrailer()
 			end
 			local fieldNum = courseplay.fields:onWhichFieldAmI(vehicle)
 			local x, _, z = getWorldTranslation(vehicle.rootNode)
-			local closestDistance = courseplay.fields:getClosestDistanceToFieldEdge(self.data.fieldNum, x, z)
+			local closestDistance = courseplay.fields:getClosestDistanceToFieldEdge(fieldNum, x, z)
 			self:debug('%s is a trailer on field %d, closest distance to %d is %.1f, attached to %s, root vehicle is %s', vehicle:getName(),
-					fieldNum, self.data.fieldNum, closestDistance, attacherVehicle and attacherVehicle:getName() or 'none', rootVehicle:getName())
+					fieldNum, fieldNum, closestDistance, attacherVehicle and attacherVehicle:getName() or 'none', rootVehicle:getName())
 			local d = courseplay:distanceToObject(self.vehicle, vehicle)
-			if d < minDistance then
+			local canLoad, freeCapacity = self:canLoadTrailer(vehicle)
+			if d < minDistance and canLoad then
 				bestTrailer = vehicle
+				minDistance = d
+				maxCapacity = freeCapacity
 			end
 		end
 	end
 	if bestTrailer then
-		self:debug('Best trailer is %s at %.1f meters', bestTrailer:getName(), minDistance)
+		self:debug('Best trailer is %s at %.1f meters, free capacity %d', bestTrailer:getName(), minDistance, maxCapacity)
 	end
 	return bestTrailer
 end
@@ -855,7 +872,7 @@ function CombineAIDriver:startSelfUnload()
 		self.courseAfterPathfinding = nil
 		self.waypointIxAfterPathfinding = nil
 		local done, path
-		self.pathfinder, done, path = PathfinderUtil.startPathfindingFromVehicleNode(self.vehicle, bestTrailer.rootNode, -self.pipeOffset, false)
+		self.pathfinder, done, path = PathfinderUtil.startPathfindingFromVehicleToNode(self.vehicle, bestTrailer.rootNode, -self.pipeOffset, true)
 		if done then
 			return self:onPathfindingDone(path)
 		end
@@ -867,6 +884,11 @@ end
 
 function CombineAIDriver:onPathfindingDone(path)
 	self:debug('Pathfinding finished with %d waypoints (%d ms)', #path, self.vehicle.timer - (self.pathFindingStartedAt or 0))
-	local selfUnloadCourse = Course(self.vehicle, courseGenerator.pointsToXzInPlace(path), true)
-	self:startCourse(selfUnloadCourse, 1)
+	if path and #path > 2 then
+		local selfUnloadCourse = Course(self.vehicle, courseGenerator.pointsToXzInPlace(path), true)
+		self:startCourse(selfUnloadCourse, 1)
+		return true
+	else
+		return false
+	end
 end

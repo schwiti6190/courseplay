@@ -52,6 +52,7 @@ function PathfinderUtil.setUpVehicleCollisionData(myVehicle)
     local myRootVehicle = myVehicle and myVehicle:getRootVehicle() or nil
     for _, vehicle in pairs(g_currentMission.vehicles) do
         if vehicle:getRootVehicle() ~= myRootVehicle and vehicle.rootNode and vehicle.sizeWidth and vehicle.sizeLength then
+            --courseplay.debugVehicle(14, myVehicle, 'othervehicle %s, otherroot %s, myroot %s', vehicle:getName(), vehicle:getRootVehicle():getName(), tostring(myRootVehicle))
             table.insert(PathfinderUtil.vehicleCollisionData, PathfinderUtil.getCorners(vehicle.rootNode, vehicle.sizeLength, vehicle.sizeWidth, vehicle:getName()))
         end
     end
@@ -157,13 +158,12 @@ end
 ---@param turnRadius number turn radius of the vehicle
 ---@param allowReverse boolean allow reverse driving
 function PathfinderUtil.startPathfinding(start, goal, length, width, turnRadius, allowReverse)
-    PathfinderUtil.setUpVehicleCollisionData()
     local pathfinder = HybridAStarWithAStarInTheMiddle(20)
     local done, path = pathfinder:start(start, goal, length, width, turnRadius, allowReverse, PathfinderUtil.getNodePenalty, PathfinderUtil.isValidNode)
     return pathfinder, done, path
 end
 
-function PathfinderUtil:getNodePositionAndDirection(node, sideOffset)
+function PathfinderUtil.getNodePositionAndDirection(node, sideOffset)
     local x, _, z = localToWorld(node, sideOffset or 0, 0, 0)
     local lx, _, lz = localDirectionToWorld(node, 0, 0, 1)
     local yRot = math.atan2(lx, lz)
@@ -175,9 +175,10 @@ end
 ---@param goalWaypoint Waypoint The destination waypoint (x, z, angle)
 ---@param allowReverse boolean allow reverse driving
 function PathfinderUtil.startPathfindingFromVehicleToWaypoint(vehicle, goalWaypoint, allowReverse)
-    local x, z, yRot = self:getNodePositionAndDirection(AIDriverUtil.getDirectionNode(vehicle))
+    local x, z, yRot = PathfinderUtil.getNodePositionAndDirection(AIDriverUtil.getDirectionNode(vehicle))
     local start = State3D(x, -z, courseGenerator.fromCpAngle(yRot))
     local goal = State3D(goalWaypoint.x, -goalWaypoint.z, courseGenerator.fromCpAngle(goalWaypoint.angle))
+    PathfinderUtil.setUpVehicleCollisionData(vehicle)
     return PathfinderUtil.startPathfinding(start, goal, vehicle.sizeLength, vehicle.sizeWidth, vehicle.cp.turnDiameter / 2, allowReverse)
 end
 
@@ -188,9 +189,10 @@ end
 ---@param sideOffset number side offset of the goal from the goal node
 ---@param allowReverse boolean allow reverse driving
 function PathfinderUtil.startPathfindingFromVehicleToNode(vehicle, goalNode, sideOffset, allowReverse)
-    local x, z, yRot = self:getNodePositionAndDirection(AIDriverUtil.getDirectionNode(vehicle))
+    local x, z, yRot = PathfinderUtil.getNodePositionAndDirection(AIDriverUtil.getDirectionNode(vehicle))
     local start = State3D(x, -z, courseGenerator.fromCpAngle(yRot))
-    x, z, yRot = self:getNodePositionAndDirection(goalNode, sideOffset)
+    x, z, yRot = PathfinderUtil.getNodePositionAndDirection(goalNode, sideOffset)
     local goal = State3D(x, -z, courseGenerator.fromCpAngle(yRot))
+    PathfinderUtil.setUpVehicleCollisionData(vehicle)
     return PathfinderUtil.startPathfinding(start, goal, vehicle.sizeLength, vehicle.sizeWidth, vehicle.cp.turnDiameter / 2, allowReverse)
 end
