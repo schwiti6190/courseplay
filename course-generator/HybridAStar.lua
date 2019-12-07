@@ -86,20 +86,23 @@ HybridAStar.MotionPrimitiveTypes = {FS = 'FS', FR = 'FR', FL = 'FL', RS = 'RS', 
 ---@param expansionDegree number degrees of arc in one expansion step
 ---@param allowReverse boolean allow for reversing
 function HybridAStar.MotionPrimitives:init(r, expansionDegree, allowReverse)
+	-- motion primitive table:
+	self.primitives = {}
 	-- distance travelled in one expansion step (length of an expansionDegree arc of a circle with radius r)
 	local d = 2 * r * math.pi * expansionDegree / 360
 	-- heading (theta) change in one step
 	local dt = math.rad(expansionDegree)
 	local dx = r * math.sin(dt)
 	local dy = r - r * math.cos(dt)
-	-- motion primitive table:
-	self.primitives = {}
 	-- forward right
 	table.insert(self.primitives, {dx = dx, dy = -dy, dt = dt, d = d, type = HybridAStar.MotionPrimitiveTypes.FR})
+	--table.insert(self.primitives, {dx = 2 * dx, dy = -dy, dt = dt, d = 2 * d, type = HybridAStar.MotionPrimitiveTypes.FR})
 	-- forward left
 	table.insert(self.primitives, {dx = dx, dy = dy, dt = -dt, d = d, type = HybridAStar.MotionPrimitiveTypes.FL})
+	--table.insert(self.primitives, {dx = 2 * dx, dy = dy, dt = -dt, d = 2 * d, type = HybridAStar.MotionPrimitiveTypes.FL})
 	-- forward straight
 	table.insert(self.primitives, {dx = d, dy = 0, dt = 0, d = d, type = HybridAStar.MotionPrimitiveTypes.FS})
+	--table.insert(self.primitives, {dx = 2 * d, dy = 0, dt = 0, d = 2 * d, type = HybridAStar.MotionPrimitiveTypes.FS})
 	if allowReverse then
 		-- reverse straight
 		table.insert(self.primitives, {dx = -d, dy = 0, dt = 0, d = d, type = HybridAStar.MotionPrimitiveTypes.RS})
@@ -465,7 +468,10 @@ function HybridAStarWithAStarInTheMiddle:resume(...)
 			table.remove(path)
 			-- since we generated a path from the goal -> start we now have to reverse it
 			self:reverseTable(path)
-			return true, path
+			local result = Polygon:new(path)
+			result:calculateData()
+			result:space(math.pi / 20, 2)
+			return true, result
 		elseif self.phase == self.MIDDLE then
 			-- middle part ready, now trim start and end to make room for the hybrid parts
 			self.middlePath = Polyline:new(path)
@@ -508,6 +514,8 @@ function HybridAStarWithAStarInTheMiddle:resume(...)
 				end
 				self.path:calculateData()
                 self.path:smooth(math.pi / 8, math.pi / 2, 3, 10, #self.path - 10)
+				self.path:calculateData()
+				self.path:space(math.pi / 20, 2)
 			end
 			return true, self.path
 		end
@@ -524,3 +532,4 @@ function HybridAStarWithAStarInTheMiddle:reverseTable(t)
 		j = j - 1
 	end
 end;
+
