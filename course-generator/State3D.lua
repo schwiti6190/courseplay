@@ -107,7 +107,7 @@ end
 
 function State3D:updateG(primitive, userPenalty)
     local penalty = 1
-    local reversePenalty = 2
+    local reversePenalty = 10
     if self.pred and self.pred.motionPrimitive then
         -- penalize turning
         if HybridAStar.MotionPrimitives.isTurn(primitive, self.pred.motionPrimitive) then

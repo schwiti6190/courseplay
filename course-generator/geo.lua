@@ -46,7 +46,7 @@ function pointToString(p)
 	if p.prevEdge then
 		fromAngle = string.format('%.1f', math.deg(p.prevEdge.angle))
 	end
-	return string.format('x=%.1f y=%.1f %s -> %s', p.x, p.y, fromAngle, toAngle)
+	return string.format('x=%.1f y=%.1f %s -> %s', p.x, p.y, fromAngle, toAngle) .. (p.reverse and '(rev)' or '')
 end
 
 -- calculates the polar coordinates of x, y with some filtering

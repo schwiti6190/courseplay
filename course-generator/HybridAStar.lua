@@ -471,6 +471,7 @@ function HybridAStarWithAStarInTheMiddle:resume(...)
 			local result = Polygon:new(path)
 			result:calculateData()
 			result:space(math.pi / 20, 2)
+			self:fixReverseForCourseplay(result)
 			return true, result
 		elseif self.phase == self.MIDDLE then
 			-- middle part ready, now trim start and end to make room for the hybrid parts
@@ -516,11 +517,26 @@ function HybridAStarWithAStarInTheMiddle:resume(...)
                 self.path:smooth(math.pi / 8, math.pi / 2, 3, 10, #self.path - 10)
 				self.path:calculateData()
 				self.path:space(math.pi / 20, 2)
+				self:fixReverseForCourseplay(self.path)
 			end
 			return true, self.path
 		end
 	end
 	return false
+end
+
+function HybridAStarWithAStarInTheMiddle:fixReverseForCourseplay(path)
+	-- fix both ends first:
+	path[1].reverse = path[2].reverse
+	path[#path].reverse = path[#path - 1].reverse
+	-- the result of the hybrid A star changes direction one waypoint too early.
+	for i = #path - 1, 2, -1 do
+		if path[i].reverse ~= path[i - 1].reverse then
+			print(i)
+			path[i].reverse = path[i - 1].reverse
+		end
+	end
+	path:calculateData()
 end
 
 -- TODO: put this in a global lib, instead of helpers.lua as helpers.lua depends on courseplay.
