@@ -1,0 +1,209 @@
+<?xml version="1.0" encoding="utf-8" standalone="no" ?>
+<modDesc descVersion="47">
+	<version>6.02.00026</version>
+	<author><![CDATA[Courseplay.devTeam]]></author>
+	<title><!-- en=English de=German fr=French es=Spanish ru=Russian pl=Polish it=Italian br=Brazilian-Portuguese cs=Chinese(Simplified) ct=Chinese(Traditional) cz=Czech nl=Netherlands hu=Hungary jp=Japanese kr=Korean pt=Portuguese ro=Romanian tr=Turkish -->
+		<en>CoursePlay SIX</en>
+		<de>CoursePlay SIX</de>
+		<fr>CoursePlay SIX</fr>
+		<es>CoursePlay SIX</es>
+		<ru>CoursePlay SIX</ru>
+		<pl>CoursePlay SIX</pl>
+		<it>CoursePlay SIX</it>
+		<br>CoursePlay SIX</br>
+		<cs>课程玩法 SIX</cs>
+		<ct>課程玩法 SIX</ct>
+		<cz>CoursePlay SIX</cz>
+		<nl>CoursePlay SIX</nl>
+		<hu>CoursePlay SIX - A Vezetősegéd</hu>
+		<jp>コースプレイ SIX</jp>
+		<kr>코스 플레이 SIX</kr>
+		<pt>CoursePlay SIX</pt>
+		<ro>CoursePlay SIX</ro>
+		<tr>CoursePlay SIX</tr>
+		<sl>CoursePlay SIX</sl>
+	</title>
+
+	<description>
+		<en>
+<![CDATA[Courseplay is a mod for Farming Simulator 19. It fills your game with a complete new AI worker system, allowing you to hire help in a completely new & amazing way!
+
+When using Courseplay you can set up help all around your farm, they can help you with regular field work, unloading your combine, sell harvest or just drop it in your silo. Need help filling a bunker? have Courseplay help you!
+You can have loads of worker driving around your farm automatically helping you out. With a little tweaking, Courseplay can fill a bunker or a trailer with a shovel, level and compact silage and much much more...
+Make your own fully automatic farm that fits your play style perfectly!
+
+Courseplay does not replace the in game worker system, it makes a new AI worker that can run side by side with your regular farm workers.]]>
+		</en>
+		<de>
+<![CDATA[Courseplay ist eine Modifikation  für den Landwirtschafts-Simulator 19, die es ermöglicht, verschiedenste Fahrzeuge autonom Kurse abfahren zu lassen, Arbeiten zu erledigen, Mähdrescher abzutanken, Früchte zu Verkaufsstellen zu fahren, einen Bunker oder Anhänger per Schaufel zu füllen, Silo zu verdichten  und vieles mehr...]]>
+		</de>
+		<fr>
+<![CDATA[Courseplay est une modification pour Farm Simulator 19, qui permet à divers véhicules de travailler de manière autonome, de décharger les moissonneuses-batteuses, de transporter des fruits aux points de vente, de remplir un bunker ou une remorque par godet, de fermer hermétiquement un silo et bien plus...]]>
+		</fr>
+		<es>
+<![CDATA[Courseplay es un mod para Farming Simulator 19. ¡Llena tu juego con un nuevo sistema de trabajo de IA completo, permitiéndote contratar ayuda de una manera completamente nueva y sorprendente!
+
+Al usar Courseplay, puede configurar la ayuda en toda su granja, pueden ayudarlo con el trabajo de campo regular, descargar su cosechadora, vender la cosecha o simplemente dejarla caer en su silo. ¿Necesitas ayuda para llenar un silo de búnker? ¡que el juego te ayude!
+Puede tener un montón de trabajadores manejando alrededor de su granja automáticamente ayudándolo. Con un pequeño ajuste, Courseplay puede llenar un silo de búnker o un remolque con una pala, ensilado nivelado y compacto y mucho más ...
+¡Crea tu propia granja totalmente automática que se adapte perfectamente a tu estilo de juego!
+
+Courseplay no reemplaza el sistema de trabajo en el juego, crea un nuevo trabajador de IA que puede correr al lado de tus trabajadores agrícolas habituales.]]>
+		</es>
+		<ru>
+<![CDATA[Courseplay - это мод для Farming Simulator 19. Он добавит в вашу игру совершенно новую систему работников с искусственным интеллектом, позволяя вам нанять помощников совершенно новым и удивительным способом!
+
+При использовании Courseplay вы можете настроить работников по всей вашей ферме так, что они смогут помочь вам с регулярными полевыми работами, разгрузкой вашего комбайна, продажей урожая или просто его доставкой на ваш склад. Нужно заполнить бункер? Вам поможет Courseplay!
+Вы можете иметь множество рабочих, которые ездят по вашей ферме, автоматически помогая вам. С небольшой настройкой Courseplay может заполнить бункер или прицеп лопатой, выровнять и утрамбовать силосную яму и многим другим ...
+Создайте свою полностью автоматизированную ферму, которая идеально подходит вашему стилю игры!
+
+Courseplay не заменяет игровую рабочую систему, он создает новый искусственный интеллект, который может работать бок о бок с обычными работниками фермы.]]>
+		</ru>
+		<pl>
+<![CDATA[Courseplay to modyfikacja dla gry Farming Simulator 19. Pozwala ona wielu pojazdom na poruszanie się w sposób całkowicie autonomiczny i automatyczny - pracować na polach, wyładowywać kombajny, dowozić produkty do punktów sprzedaży, wypełniać silosy przejazdowe lub naczepę samoładującą, wyrównywać czy ugniatać kiszonkę, oraz wiele więcej...]]>
+		</pl>
+		<it>
+<![CDATA[Courseplay è una mod per Farming Simulator 19. Riempie il tuo gioco con un sistema operativo AI completamente nuovo, che ti consente di assumere un aiuto in un modo completamente nuovo e sorprendente!
+
+Quando usi Courseplay puoi impostare un aiuto in tutta la tua fattoria, possono aiutarti con un regolare lavoro sul campo, scaricando la mietitrebbia, vendendo il raccolto o semplicemente facendolo cadere nel tuo silo. Hai bisogno di aiuto per riempire un bunker? che Courseplay ti aiuti!
+Puoi avere un sacco di lavoratori che guidano all'interno della tua fattoria per aiutarti automaticamente. Con un po 'di modifica, Courseplay può riempire un bunker o un rimorchio con una pala, un insilato livellato e compatto e molto altro ancora ...
+Crea la tua fattoria completamente automatica che si adatta perfettamente al tuo stile di gioco!
+
+Courseplay non sostituisce il sistema di gioco in gioco, ma crea un nuovo lavoratore AI che può correre fianco a fianco con i tuoi normali lavoratori agricoli.]]>
+		</it>
+        <nl>
+<![CDATA[Courseplay is een modificatie voor Farming Simulator 19. Het geeft je de mogelijkheid om veel verschillende voertuigen autonoom en automatisch te laten rond rijden, veldwerk uit te voeren, dorsen & hakselen, granen en goederen te verkopen aan verkooppunten, een bunker of trailer met een shovel te vullen, niveleren en aanrijden van kuilvoer en nog veel meer...]]>
+		</nl>
+	</description>
+
+	<multiplayer supported="true" />
+	<iconFilename>img/store.dds</iconFilename>
+	<l10n filenamePrefix="translations/translation" /> <!-- load translations from "translations/translation_<language>.xml file -->
+
+	<extraSourceFiles>
+		<sourceFile filename="register.lua" />
+	</extraSourceFiles>
+
+	<actions>
+		<action name="COURSEPLAY_MODIFIER" axisType="HALF"  />
+		<action name="COURSEPLAY_HUD" axisType="HALF"  />
+		<action name="COURSEPLAY_MENU_ACCEPT_SECONDARY" axisType="HALF"  />
+		<action name="COURSEPLAY_START_STOP" axisType="HALF"  />
+		<action name="COURSEPLAY_CANCELWAIT" axisType="HALF"  />
+		<action name="COURSEPLAY_DRIVENOW" axisType="HALF"  />
+		<action name="COURSEPLAY_STOP_AT_END" axisType="HALF"  />
+		<action name="COURSEPLAY_NEXTMODE" axisType="HALF"  />
+		<action name="COURSEPLAY_PREVMODE" axisType="HALF"  />
+		<action name="COURSEPLAY_MOUSEACTION_PRIMARY" axisType="HALF"  />
+		<action name="COURSEPLAY_MOUSEACTION_SECONDARY" axisType="HALF"  />
+		<action name="COURSEPLAY_DEBUG_MARKER" axisType="HALF"  />
+    <action name="COURSEPLAY_SHOVEL_MOVE_TO_LOADING_POSITION" axisType="HALF"  />
+		<action name="COURSEPLAY_SHOVEL_MOVE_TO_TRANSPORT_POSITION" axisType="HALF"  />
+		<action name="COURSEPLAY_SHOVEL_MOVE_TO_PRE_UNLOADING_POSITION" axisType="HALF"  />
+		<action name="COURSEPLAY_SHOVEL_MOVE_TO_UNLOADING_POSITION" axisType="HALF"  />
+		<action name="COURSEPLAY_TOGGLE_FERTILIZER" axisType="HALF" />
+    <action name="COURSEPLAY_EDITOR_TOGGLE" axisType="HALF"  />
+    <action name="COURSEPLAY_EDITOR_UNDO" axisType="HALF"  />
+    <action name="COURSEPLAY_EDITOR_SAVE" axisType="HALF"  />
+    <action name="COURSEPLAY_EDITOR_SPEED_INCREASE" axisType="HALF"  />
+    <action name="COURSEPLAY_EDITOR_SPEED_DECREASE" axisType="HALF"  />
+    <action name="COURSEPLAY_EDITOR_DELETE_WAYPOINT" axisType="HALF"  />
+    <action name="COURSEPLAY_EDITOR_DELETE_NEXT_WAYPOINT" axisType="HALF"  />    
+    <action name="COURSEPLAY_EDITOR_DELETE_TO_START" axisType="HALF"  />
+    <action name="COURSEPLAY_EDITOR_DELETE_TO_END" axisType="HALF"  />
+    <action name="COURSEPLAY_EDITOR_INSERT_WAYPOINT" axisType="HALF"  />
+    <action name="COURSEPLAY_EDITOR_CYCLE_WAYPOINT_TYPE" axisType="HALF"  /> 
+    </actions>
+
+	<inputBinding>
+		<actionBinding action="COURSEPLAY_MODIFIER">
+			<binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl" />
+		</actionBinding>
+		<actionBinding action="COURSEPLAY_HUD">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_delete" />
+        </actionBinding>
+		<actionBinding action="COURSEPLAY_MENU_ACCEPT_SECONDARY">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_KP_enter" />
+        </actionBinding>
+		<actionBinding action="COURSEPLAY_START_STOP">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_KP_7" />
+        </actionBinding>
+		<actionBinding action="COURSEPLAY_CANCELWAIT">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_KP_8" />
+        </actionBinding>
+		<actionBinding action="COURSEPLAY_DRIVENOW">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_KP_9" />
+        </actionBinding>
+		<actionBinding action="COURSEPLAY_EDITOR_TOGGLE">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_KP_0" />
+        </actionBinding>
+		<actionBinding action="COURSEPLAY_EDITOR_UNDO">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl z" />
+        </actionBinding>
+		<actionBinding action="COURSEPLAY_EDITOR_SAVE">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_f6" />
+        </actionBinding>
+  <actionBinding action="COURSEPLAY_EDITOR_SPEED_INCREASE">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_2" />
+        </actionBinding>
+ 	<actionBinding action="COURSEPLAY_EDITOR_SPEED_DECREASE">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_1" />
+        </actionBinding>
+  <actionBinding action="COURSEPLAY_EDITOR_DELETE_WAYPOINT">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_5" />
+        </actionBinding>
+  <actionBinding action="COURSEPLAY_EDITOR_DELETE_NEXT_WAYPOINT">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_6" />
+        </actionBinding>
+  <actionBinding action="COURSEPLAY_EDITOR_DELETE_TO_START">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_leftbracket" />
+        </actionBinding>
+  <actionBinding action="COURSEPLAY_EDITOR_DELETE_TO_END">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_rightbracket" />
+        </actionBinding>
+ 	<actionBinding action="COURSEPLAY_EDITOR_INSERT_WAYPOINT">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_7" />
+        </actionBinding>
+  <actionBinding action="COURSEPLAY_EDITOR_CYCLE_WAYPOINT_TYPE">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_lctrl KEY_8" />
+        </actionBinding>
+		<!-- Possible to delete blank input bindings -->
+		<actionBinding action="COURSEPLAY_STOP_AT_END">
+            <binding device="KB_MOUSE_DEFAULT" input="" />
+        </actionBinding>
+		<actionBinding action="COURSEPLAY_NEXTMODE">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_pageup" />
+        </actionBinding>
+		<actionBinding action="COURSEPLAY_PREVMODE">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_pagedown" />
+        </actionBinding>
+		<actionBinding action="COURSEPLAY_MOUSEACTION_PRIMARY">
+            <binding device="KB_MOUSE_DEFAULT" input="MOUSE_BUTTON_LEFT" />
+        </actionBinding>
+		<actionBinding action="COURSEPLAY_MOUSEACTION_SECONDARY">
+            <binding device="KB_MOUSE_DEFAULT" input="MOUSE_BUTTON_RIGHT" />
+        </actionBinding>
+		<actionBinding action="COURSEPLAY_DEBUG_MARKER">
+            <binding device="KB_MOUSE_DEFAULT" input="KEY_lalt KEY_d" />
+        </actionBinding>
+		<actionBinding action="COURSEPLAY_SHOVEL_MOVE_TO_LOADING_POSITION">
+            <binding device="KB_MOUSE_DEFAULT" input="" />
+        </actionBinding>
+		<actionBinding action="COURSEPLAY_SHOVEL_MOVE_TO_TRANSPORT_POSITION">
+            <binding device="KB_MOUSE_DEFAULT" input="" />
+        </actionBinding>
+		<actionBinding action="COURSEPLAY_SHOVEL_MOVE_TO_PRE_UNLOADING_POSITION">
+            <binding device="KB_MOUSE_DEFAULT" input="" />
+        </actionBinding>
+		<actionBinding action="COURSEPLAY_SHOVEL_MOVE_TO_UNLOADING_POSITION">
+            <binding device="KB_MOUSE_DEFAULT" input="" />
+        </actionBinding>
+		<actionBinding action="COURSEPLAY_TOGGLE_FERTILIZER">
+            <binding device="KB_MOUSE_DEFAULT" input="" />
+        </actionBinding>
+    </inputBinding>
+	<credits><![CDATA[
+## Contributors
+## Translators
+## Designers]]></credits>
+
+</modDesc>
